@@ -1,0 +1,12 @@
+{
+  "_instructions": "Add metadata for each test image in this directory",
+  "_example": {
+    "filename.png": {
+      "groundTruth": "AI or REAL",
+      "source": "Tool or camera used",
+      "category": "digital_art, photograph, etc",
+      "expectedConfidence": ">70",
+      "description": "Brief description"
+    }
+  }
+}

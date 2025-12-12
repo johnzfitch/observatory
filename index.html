@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI Observatory - Advanced deepfake detection using WebGPU acceleration">
+  <title>AI Observatory - Deepfake Detection</title>
+  <!-- Security: Content Security Policy -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self';
+                 script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net;
+                 style-src 'self' 'unsafe-inline';
+                 img-src 'self' blob: data:;
+                 worker-src 'self' blob:;
+                 connect-src 'self' blob: data: https://cdn.jsdelivr.net;">
+
+  <!-- Fonts (Local - No External CDN) -->
+  <link rel="stylesheet" href="fonts/fonts.css">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="src/ui/styles.css">
+</head>
+<body>
+  <!-- ============================================ -->
+  <!-- PHASE 1 CRITICAL SCRIPTS - ORDER MATTERS!   -->
+  <!-- ============================================ -->
+
+  <!-- 1. Emergency cache clear (runs synchronously, may reload page) -->
+  <!-- DISABLED: Causes reload loop. Use /sw-fix.html for manual cache clear -->
+  <!-- <script src="/patches/001-cache-nuclear.js"></script> -->
+
+  <!-- 2. ONNX pre-initialization (sets global config before any imports) -->
+  <script src="/src/config/onnx-init.js"></script>
+
+  <!-- ============================================ -->
+
+  <!-- Progress Tracker Container (for model loading progress) -->
+  <div id="progress-tracker" class="progress-tracker-container"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Initializing AI Observatory...</div>
+      <div class="loading-subtext" id="loadingSubtext">Detecting compute backend...</div>
+    </div>
+  </div>
+
+  <!-- Matrix Rain Background -->
+  <canvas id="matrixRain" class="matrix-rain"></canvas>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <img src="/browser/images/ai-magnifying-glass-detected.png" alt="The Observatory" class="logo">
+      <div class="brand">
+        <h1>The Observatory</h1>
+        <p class="tagline">Detect whether an image was generated via AI or Human.</p>
+      </div>
+      <div class="header-branding">
+        <img src="/browser/images/sponsored-by-internet-universe-org.png" alt="Internet Universe">
+      </div>
+    </header>
+
+    <div class="backend-info">
+      <span class="backend-label">Inference Backend:</span>
+      <span class="backend-value loading" id="backendValue">Detecting...</span>
+      <span style="margin-left: auto; color: var(--text-muted);">All processing runs locally in your browser</span>
+    </div>
+
+    <!-- Upload Zone (MOVED TO TOP) -->
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" class="upload-input" id="fileInput" accept="image/*">
+
+      <div class="upload-placeholder">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+        </svg>
+        <p class="upload-text"><strong>Drop Image Here</strong> or click to browse</p>
+        <p class="upload-hint">PNG, JPG, WEBP - All processing is local</p>
+      </div>
+
+      <div class="preview-container">
+        <img class="preview-image" id="previewImage" src="" alt="Preview">
+        <div class="preview-info">
+          <span class="preview-name" id="fileName">image.png</span>
+          <button class="preview-remove" id="removeBtn">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model Category Selectors (MOVED BELOW UPLOAD) -->
+    <div class="model-selector">
+      <!-- Full-Image AI Detection -->
+      <div class="model-category" id="fullImageCategory">
+        <div class="model-category-header">
+          <div>
+            <h3 class="model-category-title">Full-Image AI Detection</h3>
+            <p class="model-category-description">Detect if entire image is AI-generated (SD, MJ, DALL-E, Flux, GANs)</p>
+          </div>
+          <span class="model-category-count" id="fullImageCount">0/10</span>
+        </div>
+        <div class="model-category-actions">
+          <button class="category-btn" id="fullImageSelectAll">Select All</button>
+          <button class="category-btn" id="fullImageClear">Clear</button>
+        </div>
+        <div class="model-list-in-category" id="fullImageList"></div>
+      </div>
+
+      <!-- Face Manipulation Detection -->
+      <div class="model-category" id="faceManipulationCategory">
+        <div class="model-category-header">
+          <div>
+            <h3 class="model-category-title">Face Manipulation</h3>
+            <p class="model-category-description">Detect deepfake faces in real photos (requires face in image)</p>
+          </div>
+          <span class="model-category-count" id="faceManipulationCount">0/7</span>
+        </div>
+        <div class="model-category-actions">
+          <button class="category-btn" id="faceManipulationSelectAll">Select All</button>
+          <button class="category-btn" id="faceManipulationClear">Clear</button>
+        </div>
+        <div class="model-list-in-category" id="faceManipulationList"></div>
+      </div>
+    </div>
+
+    <!-- Progress Bar Container for Analysis -->
+    <div id="analysisProgress" class="analysis-progress" style="display: none;">
+      <div class="progress-text">Preparing analysis...</div>
+      <div class="progress-bar-wrapper">
+        <div class="progress-bar" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <!-- Analyze Button -->
+    <button class="analyze-btn" id="analyzeBtn" disabled>
+      <span class="btn-text">Loading models...</span>
+    </button>
+
+    <!-- New Analysis Button (hidden until results shown) -->
+    <button id="newAnalysisBtn" class="new-analysis-btn" style="display: none;">
+      New Analysis
+    </button>
+
+    <!-- Results Panel -->
+    <div class="results-panel" id="resultsPanel">
+      <div class="scanning-state" id="scanningState">
+        <svg class="scanning-icon" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+        </svg>
+        <p class="scanning-text" id="scanningText">Analyzing image...</p>
+        <p class="scanning-subtext" id="scanningSubtext">Running detection models</p>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+        <div class="model-progress-list" id="modelProgressList"></div>
+      </div>
+
+      <div id="resultsContent" class="hidden">
+        <div class="results-header">
+          <svg class="results-icon" id="resultIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+          </svg>
+          <div class="results-title-group">
+            <h3 class="results-title" id="resultTitle">Analysis Complete</h3>
+            <p class="results-subtitle" id="resultSubtitle">Results from browser-based detection</p>
+          </div>
+          <div class="results-confidence">
+            <div class="confidence-value" id="confidenceValue">--</div>
+            <div class="confidence-label">Confidence</div>
+          </div>
+        </div>
+
+        <div class="results-body">
+          <div class="model-breakdown">
+            <div class="model-breakdown-title">Model Votes</div>
+            <div class="model-votes" id="modelVotes"></div>
+          </div>
+
+          <div class="perf-stats" id="perfStats">
+            <div class="perf-stat">
+              <span>Total inference time:</span>
+              <span id="totalTime">--</span>
+            </div>
+            <div class="perf-stat">
+              <span>Average per model:</span>
+              <span id="avgTime">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Conditional logging for production
+    const DEBUG = window.location.hostname === 'localhost' || window.location.search.includes('debug=1');
+    const logger = {
+      log: (...args) => DEBUG && console.log(...args),
+      warn: console.warn.bind(console),
+      error: console.error.bind(console)
+    };
+
+    // PHASE 1: Verify ONNX init ran
+    if (!window.ort?.env?.wasm?.numThreads) {
+      console.error('[App] ONNX init script did not run! Check script load order.');
+    } else {
+      logger.log('[App] ONNX runtime configured. Threads:', window.ort.env.wasm.numThreads, 'SIMD:', window.ort.env.wasm.simd);
+    }
+
+    import * as ModelManager from './src/ui/ModelManager.js';
+    import * as InferenceEngine from './src/ui/InferenceEngine.js';
+    import { stateManager } from './src/ui/StateManager.js';
+    import * as DownloadTracker from './src/ui/DownloadTracker.js';
+
+    // ========================================
+    // State Management (Using StateManager)
+    // ========================================
+
+    // Legacy state object for backward compatibility with existing code
+    const state = {
+      selectedModels: new Set(['dima806_ai_real', 'smogy', 'umm_maybe', 'prithiv_v2']), // Default: all 4 models
+      currentImage: null,
+      currentImageData: null,
+      isAnalyzing: false,
+      modelsLoaded: 0,
+      modelStatuses: new Map()
+    };
+
+    // ========================================
+    // DOM Elements
+    // ========================================
+
+    const elements = {
+      loadingOverlay: document.getElementById('loadingOverlay'),
+      loadingSubtext: document.getElementById('loadingSubtext'),
+      backendValue: document.getElementById('backendValue'),
+      fullImageList: document.getElementById('fullImageList'),
+      faceManipulationList: document.getElementById('faceManipulationList'),
+      fullImageCount: document.getElementById('fullImageCount'),
+      faceManipulationCount: document.getElementById('faceManipulationCount'),
+      fullImageSelectAll: document.getElementById('fullImageSelectAll'),
+      fullImageClear: document.getElementById('fullImageClear'),
+      faceManipulationSelectAll: document.getElementById('faceManipulationSelectAll'),
+      faceManipulationClear: document.getElementById('faceManipulationClear'),
+      uploadZone: document.getElementById('uploadZone'),
+      fileInput: document.getElementById('fileInput'),
+      previewImage: document.getElementById('previewImage'),
+      fileName: document.getElementById('fileName'),
+      removeBtn: document.getElementById('removeBtn'),
+      analyzeBtn: document.getElementById('analyzeBtn'),
+      newAnalysisBtn: document.getElementById('newAnalysisBtn'),
+      resultsPanel: document.getElementById('resultsPanel'),
+      scanningState: document.getElementById('scanningState'),
+      scanningText: document.getElementById('scanningText'),
+      scanningSubtext: document.getElementById('scanningSubtext'),
+      progressFill: document.getElementById('progressFill'),
+      modelProgressList: document.getElementById('modelProgressList'),
+      resultsContent: document.getElementById('resultsContent'),
+      resultIcon: document.getElementById('resultIcon'),
+      resultTitle: document.getElementById('resultTitle'),
+      resultSubtitle: document.getElementById('resultSubtitle'),
+      confidenceValue: document.getElementById('confidenceValue'),
+      modelVotes: document.getElementById('modelVotes'),
+      totalTime: document.getElementById('totalTime'),
+      avgTime: document.getElementById('avgTime'),
+      analysisProgress: document.getElementById('analysisProgress'),
+      uploadSection: document.getElementById('uploadZone')
+    };
+
+    // ========================================
+    // Matrix Rain Animation
+    // ========================================
+
+    function initMatrixRain() {
+      const canvas = document.getElementById('matrixRain');
+      const ctx = canvas.getContext('2d');
+
+      const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+      const fontSize = 14;
+      let columns, drops;
+
+      function initCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        columns = Math.floor(canvas.width / fontSize);
+        drops = Array(columns).fill(1);
+      }
+
+      function draw() {
+        ctx.fillStyle = 'rgba(10, 10, 15, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#00ff9d';
+        ctx.font = `${fontSize}px monospace`;
+
+        for (let i = 0; i < drops.length; i++) {
+          const char = chars[Math.floor(Math.random() * chars.length)];
+          const x = i * fontSize;
+          const y = drops[i] * fontSize;
+
+          ctx.fillText(char, x, y);
+
+          if (y > canvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+          drops[i]++;
+        }
+      }
+
+      initCanvas();
+      setInterval(draw, 33);
+
+      window.addEventListener('resize', initCanvas);
+    }
+
+    // ========================================
+    // Toast Notification (Safe DOM construction)
+    // ========================================
+
+    function showUpdateNotification(onAccept) {
+      const toast = document.createElement('div');
+      toast.className = 'update-toast';
+      const content = document.createElement('div');
+      content.className = 'toast-content';
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('width', '20');
+      icon.setAttribute('height', '20');
+      icon.setAttribute('viewBox', '0 0 24 24');
+      icon.setAttribute('fill', 'none');
+      icon.setAttribute('stroke', 'currentColor');
+      icon.setAttribute('stroke-width', '2');
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', '12');
+      circle.setAttribute('cy', '12');
+      circle.setAttribute('r', '10');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'M12 16v-4M12 8h.01');
+      icon.appendChild(circle);
+      icon.appendChild(path);
+      const text = document.createElement('span');
+      text.textContent = 'New version available!';
+      content.appendChild(icon);
+      content.appendChild(text);
+      const actions = document.createElement('div');
+      actions.className = 'toast-actions';
+      const reloadBtn = document.createElement('button');
+      reloadBtn.className = 'toast-btn toast-reload';
+      reloadBtn.textContent = 'Reload';
+      const dismissBtn = document.createElement('button');
+      dismissBtn.className = 'toast-btn toast-dismiss';
+      dismissBtn.textContent = 'Later';
+      actions.appendChild(reloadBtn);
+      actions.appendChild(dismissBtn);
+      toast.appendChild(content);
+      toast.appendChild(actions);
+      document.body.appendChild(toast);
+      setTimeout(() => toast.classList.add('show'), 10);
+      reloadBtn.addEventListener('click', () => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+        onAccept();
+      });
+      dismissBtn.addEventListener('click', () => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      });
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          toast.classList.remove('show');
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, 30000);
+    }
+
+    // ========================================
+    // Backend Detection
+    // ========================================
+
+    function updateBackendIndicator(backend) {
+      if (backend === 'webgpu') {
+        elements.backendValue.textContent = 'WebGPU (GPU Accelerated)';
+        elements.backendValue.className = 'backend-value webgpu';
+      } else {
+        elements.backendValue.textContent = 'WASM (CPU)';
+        elements.backendValue.className = 'backend-value wasm';
+      }
+    }
+
+    // ========================================
+    // Model Category Rendering
+    // ========================================
+
+    function renderModelCategories() {
+      renderCategory('FULL_IMAGE_DETECTORS', elements.fullImageList);
+      renderCategory('FACE_MANIPULATION_DETECTORS', elements.faceManipulationList);
+      updateCategoryCounts();
+    }
+
+    function renderCategory(category, container) {
+      container.replaceChildren();
+      const models = ModelManager.getModelsByCategory(category);
+      models.forEach(model => {
+        const div = document.createElement('div');
+        div.className = 'model-item';
+        div.id = 'model-' + model.id;
+        div.textContent = model.displayName + ' (' + (model.accuracy || '~95%') + ')';
+        if (state.selectedModels.has(model.id)) div.classList.add('selected');
+        div.onclick = () => toggleModelSelection(model.id);
+        container.appendChild(div);
+      });
+    }
+
+    function toggleModelSelection(modelId) {
+      if (state.isAnalyzing) return;
+      state.selectedModels.has(modelId) ? state.selectedModels.delete(modelId) : state.selectedModels.add(modelId);
+      document.getElementById('model-' + modelId)?.classList.toggle('selected');
+      updateCategoryCounts();
+      updateAnalyzeButton();
+    }
+
+    function updateCategoryCounts() {
+      const fullImageModels = ModelManager.getModelsByCategory('FULL_IMAGE_DETECTORS');
+      const faceModels = ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS');
+      const fullImageSelected = fullImageModels.filter(m => state.selectedModels.has(m.id)).length;
+      const faceSelected = faceModels.filter(m => state.selectedModels.has(m.id)).length;
+      elements.fullImageCount.textContent = `${fullImageSelected}/${fullImageModels.length}`;
+      elements.faceManipulationCount.textContent = `${faceSelected}/${faceModels.length}`;
+    }
+
+    function updateModelStatus(modelId, status) {
+      const modelEl = document.getElementById('model-' + modelId);
+      if (modelEl) {
+        modelEl.classList.remove('loading', 'ready', 'error', 'pending');
+        modelEl.classList.add(status);
+      }
+    }
+
+    // ========================================
+    // Image Upload Handling
+    // ========================================
+
+    function setupUploadHandlers() {
+      // File input change
+      elements.fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) {
+          handleFile(e.target.files[0]);
+        }
+      });
+
+      // Drag and drop
+      elements.uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        elements.uploadZone.classList.add('dragover');
+      });
+
+      elements.uploadZone.addEventListener('dragleave', () => {
+        elements.uploadZone.classList.remove('dragover');
+      });
+
+      elements.uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        elements.uploadZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+          handleFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      // Remove button
+      elements.removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearUploadedImage();
+      });
+    }
+
+    // ========================================
+    // Clipboard Paste Support (Issue #4)
+    // ========================================
+
+    function setupClipboardPaste() {
+      document.addEventListener('paste', async (event) => {
+        const items = event.clipboardData?.items;
+        if (!items) return;
+
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            event.preventDefault();
+
+            const blob = item.getAsFile();
+            if (!blob) continue;
+
+            // Create object URL for preview
+            const imageUrl = URL.createObjectURL(blob);
+
+            // Handle the file
+            handlePastedFile(blob, imageUrl);
+
+            logger.log('[Clipboard] Image pasted from clipboard');
+            break;
+          }
+        }
+      });
+
+      // Visual hint when hovering over upload zone
+      elements.uploadZone.addEventListener('focusin', () => {
+        if (!elements.uploadZone.classList.contains('has-image')) {
+          elements.uploadZone.setAttribute('data-hint', 'Tip: You can paste images directly (Ctrl+V or Cmd+V)');
+        }
+      });
+    }
+
+    function handlePastedFile(blob, imageUrl) {
+      state.currentImage = blob;
+      state.currentImageData = imageUrl;
+      elements.previewImage.src = imageUrl;
+      elements.fileName.textContent = 'pasted-image.png';
+      elements.uploadZone.classList.add('has-image');
+      resetResults();
+      updateAnalyzeButton();
+    }
+
+    function handleFile(file) {
+      if (!file.type.startsWith('image/')) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        state.currentImage = file;
+        state.currentImageData = e.target.result;
+        elements.previewImage.src = e.target.result;
+        elements.fileName.textContent = file.name;
+        elements.uploadZone.classList.add('has-image');
+        resetResults();
+        updateAnalyzeButton();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearUploadedImage() {
+      elements.uploadZone.classList.remove('has-image');
+      elements.fileInput.value = '';
+      elements.previewImage.src = '';
+      state.currentImage = null;
+      state.currentImageData = null;
+      resetResults();
+      updateAnalyzeButton();
+    }
+
+    function resetResults() {
+      elements.resultsPanel.classList.remove('active', 'success', 'warning', 'danger', 'mixed');
+      elements.scanningState.classList.remove('hidden');
+      elements.resultsContent.classList.add('hidden');
+    }
+
+    // ========================================
+    // Analyze Button
+    // ========================================
+
+    function updateAnalyzeButton() {
+      const hasImage = state.currentImage !== null;
+      const hasModels = state.modelsLoaded > 0;
+      const canAnalyze = hasImage && hasModels && !state.isAnalyzing;
+
+      elements.analyzeBtn.disabled = !canAnalyze;
+
+      if (canAnalyze) {
+        elements.analyzeBtn.classList.add('ready');
+        elements.analyzeBtn.querySelector('.btn-text').textContent = 'Analyze Image';
+      } else if (hasModels) {
+        elements.analyzeBtn.classList.remove('ready');
+        elements.analyzeBtn.querySelector('.btn-text').textContent = 'Upload an image to analyze';
+      }
+    }
+
+    function setupAnalyzeButton() {
+      elements.analyzeBtn.addEventListener('click', async () => {
+        if (!elements.analyzeBtn.disabled) {
+          await runAnalysis();
+        }
+      });
+    }
+
+    // ========================================
+    // New Analysis Button Handler (Issue #2)
+    // ========================================
+
+    function setupNewAnalysisButton() {
+      elements.newAnalysisBtn.addEventListener('click', () => {
+        // Clear uploaded image
+        clearUploadedImage();
+
+        // Hide results panel and new analysis button
+        elements.resultsPanel.classList.remove('active', 'success', 'warning', 'danger', 'mixed');
+        elements.scanningState.classList.remove('hidden');
+        elements.resultsContent.classList.add('hidden');
+        elements.newAnalysisBtn.style.display = 'none';
+
+        // Scroll back to upload zone
+        elements.uploadSection.scrollIntoView({ behavior: 'smooth' });
+
+        logger.log('[UI] New analysis started');
+      });
+    }
+
+    // ========================================
+    // Analysis Execution
+    // ========================================
+
+    async function runAnalysis() {
+      if (!state.currentImageData || state.modelsLoaded === 0) return;
+
+      state.isAnalyzing = true;
+      elements.analyzeBtn.classList.remove('ready');
+      elements.analyzeBtn.classList.add('scanning');
+      elements.analyzeBtn.disabled = true;
+      elements.analyzeBtn.querySelector('.btn-text').textContent = 'Analyzing...';
+
+      elements.resultsPanel.classList.add('active');
+      elements.scanningState.classList.remove('hidden');
+      elements.resultsContent.classList.add('hidden');
+      elements.newAnalysisBtn.style.display = 'none';
+
+      const votes = [];
+      const scores = [];
+      const startTime = performance.now();
+      const totalModels = state.selectedModels.size;
+      const modelIds = Array.from(state.selectedModels);
+
+      // Build per-model progress UI
+      elements.modelProgressList.textContent = '';
+      const progressBars = {};
+
+      modelIds.forEach(modelId => {
+        const modelInfo = ModelManager.getModelInfo(modelId);
+        const displayName = modelInfo ? modelInfo.displayName : modelId;
+
+        const item = document.createElement('div');
+        item.className = 'model-progress-item';
+
+        const name = document.createElement('span');
+        name.className = 'model-progress-name';
+        name.textContent = displayName.length > 16 ? displayName.substring(0, 14) + '...' : displayName;
+        name.title = displayName;
+
+        const bar = document.createElement('div');
+        bar.className = 'model-progress-bar';
+
+        const fill = document.createElement('div');
+        fill.className = 'model-progress-fill';
+        fill.style.width = '0%';
+
+        const status = document.createElement('span');
+        status.className = 'model-progress-status';
+        status.textContent = 'waiting';
+
+        bar.appendChild(fill);
+        item.appendChild(name);
+        item.appendChild(bar);
+        item.appendChild(status);
+        elements.modelProgressList.appendChild(item);
+
+        progressBars[modelId] = { fill, status, item };
+      });
+
+      // Helper to get preliminary result info
+      function getPreliminaryInfo(avgScore) {
+        if (avgScore >= 70) return { label: 'AI Generated', color: 'var(--danger)' };
+        if (avgScore >= 55) return { label: 'Likely AI', color: 'var(--warning)' };
+        if (avgScore <= 30) return { label: 'Likely Real', color: 'var(--success)' };
+        return { label: 'Analyzing...', color: 'var(--cyan)' };
+      }
+
+      // Helper to update preliminary results
+      function updatePreliminaryResult(completedCount) {
+        if (scores.length === 0) {
+          elements.scanningSubtext.textContent = 'Loading models...';
+          return;
+        }
+        const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+        const pct = Math.round(avgScore);
+        const info = getPreliminaryInfo(avgScore);
+
+        elements.scanningSubtext.textContent = '';
+        const line1 = document.createElement('span');
+        line1.style.color = info.color;
+        line1.style.fontWeight = '600';
+        line1.textContent = pct + '% AI - ' + info.label;
+        elements.scanningSubtext.appendChild(line1);
+
+        elements.progressFill.style.width = (completedCount / totalModels * 100) + '%';
+      }
+
+      try {
+        const imageBlob = await fetch(state.currentImageData).then(r => r.blob());
+        let completedCount = 0;
+
+        for (const modelId of modelIds) {
+          const modelInfo = ModelManager.getModelInfo(modelId);
+          if (!modelInfo) continue;
+
+          const pb = progressBars[modelId];
+          pb.fill.className = 'model-progress-fill running';
+          pb.status.textContent = 'loading';
+          pb.status.className = 'model-progress-status';
+
+          // Subscribe to real-time download progress
+          const unsubscribe = DownloadTracker.subscribe(modelId, (percent, status) => {
+            if (status === 'downloading') {
+              pb.fill.style.width = (percent * 0.8) + '%'; // 0-80% for download
+              pb.status.textContent = percent + '%';
+            } else if (status === 'cached') {
+              pb.fill.style.width = '80%';
+              pb.status.textContent = 'cached';
+              pb.status.className = 'model-progress-status cached';
+            }
+          });
+
+          try {
+            const modelStart = performance.now();
+
+            // Update to running state
+            pb.fill.style.width = '80%';
+            pb.status.textContent = 'running';
+
+            // Run inference - the model's load() will emit download progress
+            const results = await InferenceEngine.runInference(imageBlob, [modelId], {});
+
+            // Cleanup subscription
+            unsubscribe();
+
+            const modelTime = performance.now() - modelStart;
+            const modelResult = results.modelResults[0];
+
+            if (modelResult && !modelResult.error) {
+              const aiScore = modelResult.aiProbability;
+              scores.push(aiScore);
+
+              let vote = 'unsure';
+              if (aiScore >= 65) vote = 'ai';
+              else if (aiScore <= 35) vote = 'human';
+
+              votes.push({
+                model: modelInfo.displayName,
+                vote: vote,
+                score: Math.round(aiScore),
+                time: Math.round(modelTime)
+              });
+
+              pb.fill.style.width = '100%';
+              pb.fill.className = 'model-progress-fill complete';
+              pb.status.textContent = Math.round(aiScore) + '%';
+              pb.status.className = 'model-progress-status complete';
+            } else {
+              throw new Error(modelResult?.error || 'Unknown error');
+            }
+          } catch (err) {
+            unsubscribe();
+            console.error('Error with ' + modelInfo.displayName + ':', err);
+            votes.push({ model: modelInfo.displayName, vote: 'error', score: 0, time: 0 });
+            pb.fill.style.width = '100%';
+            pb.fill.className = 'model-progress-fill error';
+            pb.status.textContent = 'error';
+            pb.status.className = 'model-progress-status';
+          }
+
+          completedCount++;
+          updatePreliminaryResult(completedCount);
+        }
+
+        const totalTime = performance.now() - startTime;
+        const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 50;
+        showResults(avgScore, votes, totalTime);
+
+      } catch (error) {
+        console.error('Analysis failed:', error);
+        showError(error.message);
+      } finally {
+        state.isAnalyzing = false;
+        elements.analyzeBtn.classList.remove('scanning');
+        elements.analyzeBtn.classList.add('ready');
+        elements.analyzeBtn.disabled = false;
+        elements.analyzeBtn.querySelector('.btn-text').textContent = 'Analyze Again';
+
+        // Show new analysis button after results
+        elements.newAnalysisBtn.style.display = 'block';
+      }
+    }
+
+    function showResults(avgScore, votes, totalTime) {
+      elements.scanningState.classList.add('hidden');
+      elements.resultsContent.classList.remove('hidden');
+
+      let title, subtitle, resultType, iconColor;
+
+      // avgScore is already a percentage (0-100), not decimal (0-1)
+      if (avgScore >= 70) {
+        title = 'AI Generated';
+        subtitle = 'High confidence detection across models';
+        resultType = 'danger';
+        iconColor = 'var(--danger)';
+      } else if (avgScore >= 55) {
+        title = 'Likely AI Generated';
+        subtitle = 'Multiple models flagged this image';
+        resultType = 'warning';
+        iconColor = 'var(--warning)';
+      } else if (avgScore <= 30) {
+        title = 'Likely Human Created';
+        subtitle = 'No significant AI markers detected';
+        resultType = 'success';
+        iconColor = 'var(--success)';
+      } else if (avgScore <= 45) {
+        title = 'Probably Human Created';
+        subtitle = 'Most models see authentic content';
+        resultType = 'success';
+        iconColor = 'var(--success)';
+      } else {
+        title = 'Inconclusive';
+        subtitle = 'Models disagree on this image';
+        resultType = 'mixed';
+        iconColor = 'var(--cyan)';
+      }
+
+      elements.resultsPanel.className = 'results-panel active ' + resultType;
+      elements.resultIcon.style.stroke = iconColor;
+      elements.resultTitle.textContent = title;
+      elements.resultSubtitle.textContent = subtitle;
+
+      // avgScore is already a percentage (0-100), not a decimal (0-1)
+      // Models return aiProbability as percentage, so no need to multiply by 100
+      const confidence = Math.round(Math.max(avgScore, 100 - avgScore));
+      elements.confidenceValue.textContent = confidence + '%';
+
+      elements.modelVotes.replaceChildren();
+      votes.forEach(v => {
+        const span = document.createElement('span');
+        span.className = 'model-vote ' + v.vote;
+        span.title = v.score + '% AI probability (' + v.time + 'ms)';
+        span.textContent = v.model;
+        elements.modelVotes.appendChild(span);
+      });
+
+      elements.totalTime.textContent = Math.round(totalTime) + 'ms';
+      elements.avgTime.textContent = Math.round(totalTime / votes.length) + 'ms';
+    }
+
+    function showError(message) {
+      elements.scanningState.classList.add('hidden');
+      elements.resultsContent.classList.remove('hidden');
+      elements.resultsPanel.className = 'results-panel active danger';
+      elements.resultIcon.style.stroke = 'var(--danger)';
+      elements.resultTitle.textContent = 'Analysis Error';
+      elements.resultSubtitle.textContent = message;
+      elements.confidenceValue.textContent = '--';
+      elements.modelVotes.replaceChildren();
+    }
+
+    // ========================================
+    // Model Loading
+    // ========================================
+
+    async function loadModels() {
+      // LAZY LOADING: Don't pre-load models at startup
+      // Models will load on-demand during inference (with 120s timeout)
+      // Just render the UI and mark models as ready to use
+
+      renderModelCategories();
+
+      for (const modelId of state.selectedModels) {
+        const modelInfo = ModelManager.getModelInfo(modelId);
+        if (!modelInfo) continue;
+
+        // Mark as pending (will load on first inference)
+        updateModelStatus(modelId, 'pending');
+        state.modelsLoaded++;
+      }
+
+      elements.loadingSubtext.textContent = 'Models ready (will load on demand with 2min timeout)';
+
+      if (state.modelsLoaded > 0) {
+        updateAnalyzeButton();
+      } else {
+        elements.analyzeBtn.querySelector('.btn-text').textContent = 'No models selected';
+      }
+    }
+
+    // ========================================
+    // Category Button Handlers
+    // ========================================
+
+    function setupCategoryButtons() {
+      elements.fullImageSelectAll.onclick = () => {
+        ModelManager.getModelsByCategory('FULL_IMAGE_DETECTORS').forEach(m => state.selectedModels.add(m.id));
+        renderModelCategories();
+        updateAnalyzeButton();
+      };
+      elements.fullImageClear.onclick = () => {
+        ModelManager.getModelsByCategory('FULL_IMAGE_DETECTORS').forEach(m => state.selectedModels.delete(m.id));
+        renderModelCategories();
+        updateAnalyzeButton();
+      };
+      elements.faceManipulationSelectAll.onclick = () => {
+        ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS').forEach(m => state.selectedModels.add(m.id));
+        renderModelCategories();
+        updateAnalyzeButton();
+      };
+      elements.faceManipulationClear.onclick = () => {
+        ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS').forEach(m => state.selectedModels.delete(m.id));
+        renderModelCategories();
+        updateAnalyzeButton();
+      };
+    }
+
+    // ========================================
+    // Initialization
+    // ========================================
+
+    async function init() {
+      try {
+        elements.loadingOverlay.style.display = 'flex';
+
+        // Initialize matrix rain
+        initMatrixRain();
+
+        // Initialize inference engine
+        elements.loadingSubtext.textContent = 'Detecting WebGPU support...';
+        await InferenceEngine.init();
+
+        // Update backend indicator
+        const backend = InferenceEngine.getBackend();
+        updateBackendIndicator(backend);
+
+        // Load models
+        await loadModels();
+
+        // Setup event listeners
+        setupCategoryButtons();
+        setupUploadHandlers();
+        setupClipboardPaste();
+        setupAnalyzeButton();
+        setupNewAnalysisButton();
+
+        // Hide loading overlay
+        setTimeout(() => {
+          elements.loadingOverlay.style.opacity = '0';
+          setTimeout(() => {
+            elements.loadingOverlay.style.display = 'none';
+          }, 300);
+        }, 500);
+
+      } catch (error) {
+        console.error('Initialization failed:', error);
+        elements.loadingSubtext.textContent = 'Error: ' + error.message;
+        elements.loadingSubtext.style.color = '#ff4444';
+      }
+    }
+
+    // ========================================
+    // Start Application
+    // ========================================
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+
+  <!-- Service Worker Registration for Caching & Offline Support -->
+  <script>
+    // Register Service Worker for intelligent caching
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/service-worker.js', {
+            scope: '/'
+          });
+
+          console.log('[App] Service Worker registered:', registration.scope);
+
+          // Check for updates periodically
+          setInterval(() => {
+            registration.update();
+          }, 60000); // Check every minute
+
+          // Handle update found
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[App] New Service Worker version available');
+                // Show non-blocking update notification
+                if (typeof showUpdateNotification === 'function') {
+                  showUpdateNotification(() => {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                    window.location.reload();
+                  });
+                } else {
+                  console.warn('[App] showUpdateNotification not available, auto-reloading');
+                  newWorker.postMessage({ type: 'SKIP_WAITING' });
+                  window.location.reload();
+                }
+              }
+            });
+          });
+
+          // Controller change listener (when new SW takes over)
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            console.log('[App] Service Worker controller changed');
+          });
+
+        } catch (error) {
+          console.error('[App] Service Worker registration failed:', error);
+        }
+      });
+
+      // Message handler for SW communication
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        const { type, data } = event.data;
+        console.log('[App] Message from SW:', type, data);
+      });
+    } else {
+      console.warn('[App] Service Worker not supported');
+    }
+  </script>
+</body>
+</html>

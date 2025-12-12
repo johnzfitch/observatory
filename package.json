@@ -1,0 +1,19 @@
+{
+  "name": "deepfake-detector-webgpu",
+  "version": "2.0.5",
+  "type": "module",
+  "description": "AI-powered deepfake detection using WebGPU and Transformers.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep smoke",
+    "test:prediction": "playwright test --grep prediction",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:prod": "playwright test --config=playwright.prod.config.js",
+    "test:report": "playwright show-report",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0"
+  }
+}

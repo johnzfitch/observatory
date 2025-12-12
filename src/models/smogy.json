@@ -1,0 +1,35 @@
+{
+  "modelId": "smogy",
+  "displayName": "SMOGY AI Detector",
+  "hfModel": "Smogy/SMOGY-Ai-images-detector",
+  "hfModelONNX": "amrita-detectly/detect-ai-image-v1",
+  "architecture": "Swin Transformer (microsoft/swin-base-patch4-window7-224)",
+  "accuracy": "98.2%",
+  "inputSize": 224,
+  "parameterCount": "86.8M",
+  "labels": ["artificial", "human"],
+  "tier": 1,
+  "status": "ready",
+  "trainingDataset": "Fine-tuned from Organika/sdxl-detector",
+  "performance": {
+    "overall": "98.18%",
+    "dalle": "90.76%",
+    "imagen": "75.63%"
+  },
+  "onnxAvailable": true,
+  "onnxSize": "422MB",
+  "safetensorsSize": "347MB",
+  "recommendedThreshold": 0.5,
+  "notes": "Fine-tuned Swin Transformer specifically for 2024 AI generation models. Improved performance on DALL-E, Imagen, and other modern generators. ONNX quantized version available for faster inference. Non-commercial use only.",
+  "limitations": [
+    "Non-commercial use only (training data licensing)",
+    "ONNX version is quantized (may have slight accuracy tradeoff for speed)",
+    "Lower performance on Imagen (75.63%) compared to other generators"
+  ],
+  "strengths": [
+    "Excellent overall accuracy (98.18%)",
+    "Strong performance on DALL-E (90.76%)",
+    "Fine-tuned for 2024 modern AI generators",
+    "ONNX version available for WebGPU acceleration"
+  ]
+}

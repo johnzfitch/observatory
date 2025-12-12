@@ -1,0 +1,98 @@
+{
+  "modelId": "ateeqq",
+  "displayName": "Ateeqq (Flux/MJ v6/SD3.5)",
+  "category": "digital_art",
+  "priority": 1,
+
+  "huggingface": {
+    "modelId": "Ateeqq/ai-vs-human-image-detector",
+    "architecture": "SigLIP",
+    "baseModel": "google/siglip-base-patch16-224",
+    "hasOnnxVersion": false,
+    "requiresConversion": true
+  },
+
+  "performance": {
+    "accuracy": "99.23%",
+    "testDataset": "120k images",
+    "trainingEpochs": 5,
+    "trainingLoss": 0.0799,
+    "modelSize": "~400MB (fp32)"
+  },
+
+  "trainingData": {
+    "totalImages": 120000,
+    "aiImages": 60000,
+    "humanImages": 60000,
+    "generators": [
+      "Flux 1.1 Pro",
+      "Midjourney v6.1",
+      "Stable Diffusion 3.5",
+      "GPT-4o"
+    ],
+    "humanSources": [
+      "LAION-5B",
+      "DiffusionDB",
+      "ImageNet"
+    ]
+  },
+
+  "labels": {
+    "ai": "AI-generated image",
+    "hum": "Human-created image"
+  },
+
+  "preprocessing": {
+    "imageSize": 224,
+    "normalization": "SigLIP standard (via AutoImageProcessor)",
+    "colorSpace": "RGB"
+  },
+
+  "transformersJs": {
+    "compatible": true,
+    "pipeline": "image-classification",
+    "requiresOnnxConversion": true,
+    "estimatedConversionDifficulty": "easy",
+    "supportedDevices": ["webgpu", "wasm", "cpu"],
+    "quantizationOptions": ["fp32", "fp16", "q8", "q4"]
+  },
+
+  "conversion": {
+    "command": "optimum-cli export onnx --model Ateeqq/ai-vs-human-image-detector --task image-classification --device cpu ./onnx/ateeqq/",
+    "exportScript": "web-gpu/scripts/export-ateeqq.py",
+    "verificationScript": "web-gpu/scripts/verify-onnx-export.py"
+  },
+
+  "usage": {
+    "strengths": [
+      "Highest accuracy (99.23%) among all art detectors",
+      "Trained on latest 2024 generators (Flux 1.1 Pro, MJ v6.1)",
+      "Balanced dataset (50/50 AI/human)",
+      "Modern architecture (SigLIP - efficient and accurate)"
+    ],
+    "limitations": [
+      "Focused on digital art, not deepfake photos",
+      "Requires ONNX conversion before browser use",
+      "~400MB model size (consider quantization for production)"
+    ],
+    "recommendedFor": [
+      "Detecting Flux-generated images",
+      "Detecting Midjourney v6+ images",
+      "Detecting Stable Diffusion 3.5 images",
+      "High-stakes verification (highest accuracy)"
+    ]
+  },
+
+  "links": {
+    "huggingface": "https://huggingface.co/Ateeqq/ai-vs-human-image-detector",
+    "demo": "https://huggingface.co/spaces/Ateeqq/ai-image-detector",
+    "pythonImplementation": "detectors/ateeqq_detector.py"
+  },
+
+  "notes": [
+    "Label 'hum' is short for 'human' (not 'hum-an' typo)",
+    "SigLIP architecture provides better efficiency vs standard CLIP",
+    "Model shows strong generalization to unseen generators",
+    "Compatible with Transformers.js v2.17.2+"
+  ]
+}

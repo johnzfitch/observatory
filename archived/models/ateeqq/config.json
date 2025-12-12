@@ -1,0 +1,36 @@
+{
+  "architectures": [
+    "SiglipForImageClassification"
+  ],
+  "model_type": "siglip",
+  "id2label": {
+    "0": "ai",
+    "1": "hum"
+  },
+  "label2id": {
+    "ai": 0,
+    "hum": 1
+  },
+  "image_size": 224,
+  "num_channels": 3,
+  "problem_type": "single_label_classification",
+  "torch_dtype": "float32",
+  "_metadata": {
+    "original_model": "Ateeqq/ai-vs-human-image-detector",
+    "base_model": "google/siglip-base-patch16-224",
+    "accuracy": "99.23%",
+    "training_data": {
+      "total_images": 120000,
+      "ai_images": 60000,
+      "human_images": 60000,
+      "epochs": 5,
+      "training_loss": 0.0799
+    },
+    "generators": [
+      "Flux 1.1 Pro",
+      "Midjourney v6.1",
+      "Stable Diffusion 3.5",
+      "GPT-4o"
+    ]
+  }
+}

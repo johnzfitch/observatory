@@ -1,0 +1,56 @@
+{
+  "modelId": "haywood",
+  "displayName": "Haywood SwinV2",
+  "architecture": "SwinV2",
+  "parameters": "0.2B",
+  "accuracy": {
+    "overall": "98.2%",
+    "f1": 0.988,
+    "auc": 0.995
+  },
+  "huggingface": {
+    "original": "haywoodsloan/ai-image-detector-deploy",
+    "onnx": "LPX55/detection-model-1-ONNX"
+  },
+  "category": "digital_art",
+  "preprocessing": {
+    "inputSize": [256, 256],
+    "channels": 3,
+    "normalize": true,
+    "normalization": {
+      "mean": [0.485, 0.456, 0.406],
+      "std": [0.229, 0.224, 0.225]
+    },
+    "rescale": true,
+    "rescaleFactor": 0.00392,
+    "resample": "bicubic"
+  },
+  "labels": {
+    "0": "artificial",
+    "1": "real"
+  },
+  "modelConfig": {
+    "imageSize": 256,
+    "patchSize": 4,
+    "embedDim": 192,
+    "depths": [2, 2, 18, 2],
+    "numHeads": [6, 12, 24, 48],
+    "windowSize": 16,
+    "mlpRatio": 4.0,
+    "dropPathRate": 0.1,
+    "hiddenAct": "gelu"
+  },
+  "compatibility": {
+    "transformersJs": true,
+    "onnxRuntime": true,
+    "webgpu": true,
+    "wasm": true
+  },
+  "notes": [
+    "ONNX version available with optimized performance",
+    "Binary classifier: artificial vs real",
+    "Trained on diverse AI-generated image dataset",
+    "SwinV2 architecture provides strong feature extraction",
+    "Automatic fallback to original model if ONNX fails"
+  ]
+}

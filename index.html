@@ -139,7 +139,7 @@
     </button>
 
     <!-- New Analysis Button (hidden until results shown) -->
-    <button id="newAnalysisBtn" class="new-analysis-btn" style="display: none;">
+    <button id="newAnalysisBtn" class="new-analysis-btn hidden">
       New Analysis
     </button>
 
@@ -228,6 +228,41 @@
       modelsLoaded: 0,
       modelStatuses: new Map()
     };
+
+    // ========================================
+    // Display State Helpers (consolidated)
+    // ========================================
+
+    /**
+     * Show an element by removing hidden class
+     * @param {HTMLElement} el - Element to show
+     */
+    function showElement(el) {
+      if (el) el.classList.remove('hidden');
+    }
+
+    /**
+     * Hide an element by adding hidden class
+     * @param {HTMLElement} el - Element to hide
+     */
+    function hideElement(el) {
+      if (el) el.classList.add('hidden');
+    }
+
+    /**
+     * Toggle visibility of an element
+     * @param {HTMLElement} el - Element to toggle
+     * @param {boolean} visible - Whether to show (true) or hide (false)
+     */
+    function setVisible(el, visible) {
+      if (el) {
+        if (visible) {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      }
+    }
 
     // ========================================
     // DOM Elements
@@ -442,6 +477,12 @@
     // Image Upload Handling
     // ========================================
 
+    // Detect touch device
+    const isTouchDevice = () => 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+    // Drag counter to handle nested elements and prevent flickering
+    let dragCounter = 0;
+
     function setupUploadHandlers() {
       // File input change
       elements.fileInput.addEventListener('change', (e) => {
@@ -450,23 +491,73 @@
         }
       });
 
-      // Drag and drop
-      elements.uploadZone.addEventListener('dragover', (e) => {
+      // Drag and drop (with flicker prevention)
+      elements.uploadZone.addEventListener('dragenter', (e) => {
         e.preventDefault();
-        elements.uploadZone.classList.add('dragover');
+        e.stopPropagation();
+        dragCounter++;
+        if (dragCounter === 1) {
+          elements.uploadZone.classList.add('dragover');
+        }
       });
 
-      elements.uploadZone.addEventListener('dragleave', () => {
-        elements.uploadZone.classList.remove('dragover');
+      elements.uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      elements.uploadZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+        if (dragCounter === 0) {
+          elements.uploadZone.classList.remove('dragover');
+        }
       });
 
       elements.uploadZone.addEventListener('drop', (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        dragCounter = 0;
         elements.uploadZone.classList.remove('dragover');
         if (e.dataTransfer.files.length) {
           handleFile(e.dataTransfer.files[0]);
         }
       });
+
+      // Touch-specific handling to prevent mobile drag issues
+      if (isTouchDevice()) {
+        // Prevent default touch behaviors that cause flashing
+        elements.uploadZone.addEventListener('touchstart', (e) => {
+          // Allow normal touch for file selection
+        }, { passive: true });
+
+        elements.uploadZone.addEventListener('touchmove', (e) => {
+          // Prevent scroll-triggered drag effects while touching upload zone
+          if (e.target === elements.uploadZone || elements.uploadZone.contains(e.target)) {
+            // Only prevent default if we're actively touching the upload zone content
+            const touch = e.touches[0];
+            const rect = elements.uploadZone.getBoundingClientRect();
+            if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+                touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+              // Don't prevent default - allow scrolling, just ensure no dragover class
+              elements.uploadZone.classList.remove('dragover');
+            }
+          }
+        }, { passive: true });
+
+        elements.uploadZone.addEventListener('touchend', () => {
+          // Ensure dragover class is removed on touch end
+          dragCounter = 0;
+          elements.uploadZone.classList.remove('dragover');
+        }, { passive: true });
+
+        elements.uploadZone.addEventListener('touchcancel', () => {
+          // Clean up on touch cancel
+          dragCounter = 0;
+          elements.uploadZone.classList.remove('dragover');
+        }, { passive: true });
+      }
 
       // Remove button
       elements.removeBtn.addEventListener('click', (e) => {
@@ -549,8 +640,9 @@
 
     function resetResults() {
       elements.resultsPanel.classList.remove('active', 'success', 'warning', 'danger', 'mixed');
-      elements.scanningState.classList.remove('hidden');
-      elements.resultsContent.classList.add('hidden');
+      showElement(elements.scanningState);
+      hideElement(elements.resultsContent);
+      hideElement(elements.newAnalysisBtn);
     }
 
     // ========================================
@@ -592,9 +684,9 @@
 
         // Hide results panel and new analysis button
         elements.resultsPanel.classList.remove('active', 'success', 'warning', 'danger', 'mixed');
-        elements.scanningState.classList.remove('hidden');
-        elements.resultsContent.classList.add('hidden');
-        elements.newAnalysisBtn.style.display = 'none';
+        showElement(elements.scanningState);
+        hideElement(elements.resultsContent);
+        hideElement(elements.newAnalysisBtn);
 
         // Scroll back to upload zone
         elements.uploadSection.scrollIntoView({ behavior: 'smooth' });
@@ -617,9 +709,9 @@
       elements.analyzeBtn.querySelector('.btn-text').textContent = 'Analyzing...';
 
       elements.resultsPanel.classList.add('active');
-      elements.scanningState.classList.remove('hidden');
-      elements.resultsContent.classList.add('hidden');
-      elements.newAnalysisBtn.style.display = 'none';
+      showElement(elements.scanningState);
+      hideElement(elements.resultsContent);
+      hideElement(elements.newAnalysisBtn);
 
       const votes = [];
       const scores = [];
@@ -783,13 +875,13 @@
         elements.analyzeBtn.querySelector('.btn-text').textContent = 'Analyze Again';
 
         // Show new analysis button after results
-        elements.newAnalysisBtn.style.display = 'block';
+        showElement(elements.newAnalysisBtn);
       }
     }
 
     function showResults(avgScore, votes, totalTime) {
-      elements.scanningState.classList.add('hidden');
-      elements.resultsContent.classList.remove('hidden');
+      hideElement(elements.scanningState);
+      showElement(elements.resultsContent);
 
       let title, subtitle, resultType, iconColor;
 
@@ -845,8 +937,8 @@
     }
 
     function showError(message) {
-      elements.scanningState.classList.add('hidden');
-      elements.resultsContent.classList.remove('hidden');
+      hideElement(elements.scanningState);
+      showElement(elements.resultsContent);
       elements.resultsPanel.className = 'results-panel active danger';
       elements.resultIcon.style.stroke = 'var(--danger)';
       elements.resultTitle.textContent = 'Analysis Error';
@@ -917,7 +1009,8 @@
 
     async function init() {
       try {
-        elements.loadingOverlay.style.display = 'flex';
+        // Ensure loading overlay is visible
+        elements.loadingOverlay.classList.remove('hidden');
 
         // Initialize matrix rain
         initMatrixRain();
@@ -940,12 +1033,9 @@
         setupAnalyzeButton();
         setupNewAnalysisButton();
 
-        // Hide loading overlay
+        // Hide loading overlay with fade transition
         setTimeout(() => {
-          elements.loadingOverlay.style.opacity = '0';
-          setTimeout(() => {
-            elements.loadingOverlay.style.display = 'none';
-          }, 300);
+          elements.loadingOverlay.classList.add('hidden');
         }, 500);
 
       } catch (error) {

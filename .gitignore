@@ -1,0 +1,14 @@
+# Large model files (should be downloaded at runtime, not committed)
+models/**/*.onnx
+archived/models/**/*.onnx
+archive/models/**/*.onnx
+
+# Node modules
+node_modules/
+
+# Test results
+test-results/
+playwright-report/
+
+# Logs
+*.log

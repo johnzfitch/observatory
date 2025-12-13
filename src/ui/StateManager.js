@@ -21,7 +21,7 @@ export class StateManager {
     this.state = {
       currentImage: null,
       currentImageBlob: null,
-      selectedModels: new Set(['dima806_ai_real', 'smogy', 'haywood']),
+      selectedModels: new Set(['dima806_ai_real', 'smogy', 'umm_maybe', 'prithiv_v2']),
       isAnalyzing: false,
       analysisResults: null,
       loadedModels: new Set(),

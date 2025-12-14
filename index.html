@@ -281,7 +281,9 @@
 
     function initMatrixRain() {
       const canvas = document.getElementById('matrixRain');
-      const ctx = canvas.getContext('2d');
+      // alpha: false = opaque canvas, eliminates iOS Safari compositor flash
+      // desynchronized: true = reduces latency, better performance
+      const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
 
       const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
       const fontSize = 14;
@@ -302,6 +304,10 @@
 
         // Scale context to match DPI
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Fill with solid background (required for alpha: false canvas)
+        ctx.fillStyle = '#0a0a0f';
+        ctx.fillRect(0, 0, logicalWidth, logicalHeight);
 
         columns = Math.floor(logicalWidth / fontSize);
         drops = Array(columns).fill(1);

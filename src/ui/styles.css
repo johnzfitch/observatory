@@ -203,6 +203,12 @@ p:last-child {
   pointer-events: none;
   overflow: hidden;
   z-index: 0;
+  /* Force iOS Safari to keep this in its own GPU layer */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  will-change: contents;
 }
 
 .matrix-column {

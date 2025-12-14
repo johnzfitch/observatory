@@ -16,7 +16,7 @@
 
 // STABLE VERSIONING: Only bump when breaking changes require cache invalidation
 // Models use IndexedDB (onnx-init.js) so they persist across SW updates
-const CACHE_VERSION = 'v2.1.1';  // Revert matrix rain DPI fix
+const CACHE_VERSION = 'v2.1.2';  // Restore matrix rain DPI, remove tap-highlight
 const CACHE_NAME = `deepfake-detector-${CACHE_VERSION}`;
 const MODEL_CACHE_NAME = `deepfake-detector-models-${CACHE_VERSION}`;
 const RUNTIME_CACHE_NAME = `deepfake-detector-runtime-${CACHE_VERSION}`;

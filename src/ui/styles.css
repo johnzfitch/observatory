@@ -2432,8 +2432,9 @@ button,
 
   /* Ensure clear visual feedback on tap */
   .model-item:active {
-    background: var(--accent-dim);
-    border-color: var(--accent);
+    /* Use the same gradient as the desktop selected state for consistency */
+    background: linear-gradient(90deg, var(--depth-accent-1) 0%, var(--depth-accent-2) 100%);
+    border-color: var(--depth-accent-2);
   }
 }
 

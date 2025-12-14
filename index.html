@@ -281,31 +281,18 @@
 
       const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
       const fontSize = 14;
-      let columns, drops, logicalWidth, logicalHeight;
+      let columns, drops;
 
       function initCanvas() {
-        const dpr = window.devicePixelRatio || 1;
-        logicalWidth = window.innerWidth;
-        logicalHeight = window.innerHeight;
-
-        // Set canvas internal size to account for high-DPI displays
-        canvas.width = logicalWidth * dpr;
-        canvas.height = logicalHeight * dpr;
-
-        // Set CSS size to fill viewport
-        canvas.style.width = logicalWidth + 'px';
-        canvas.style.height = logicalHeight + 'px';
-
-        // Scale context to match DPI
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-        columns = Math.floor(logicalWidth / fontSize);
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        columns = Math.floor(canvas.width / fontSize);
         drops = Array(columns).fill(1);
       }
 
       function draw() {
         ctx.fillStyle = 'rgba(10, 10, 15, 0.05)';
-        ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.fillStyle = '#00ff9d';
         ctx.font = `${fontSize}px monospace`;
@@ -317,7 +304,7 @@
 
           ctx.fillText(char, x, y);
 
-          if (y > logicalHeight && Math.random() > 0.975) {
+          if (y > canvas.height && Math.random() > 0.975) {
             drops[i] = 0;
           }
           drops[i]++;

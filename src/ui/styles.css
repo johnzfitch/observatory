@@ -1926,3 +1926,25 @@ input:focus-visible {
 .toast-reload:hover {
   background: var(--accent-bright);
 }
+
+/* ============================================================================
+   iOS SAFARI PERFORMANCE FIX
+   backdrop-filter: blur() causes compositing layer conflicts with canvas
+   ============================================================================ */
+
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari only - disable expensive backdrop-filter */
+  header,
+  .backend-info,
+  .model-status,
+  .model-category,
+  .upload-zone,
+  .analyze-btn,
+  .loading-overlay,
+  .results-panel,
+  .progress-tracker-container {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: rgba(21, 16, 37, 0.94);
+  }
+}

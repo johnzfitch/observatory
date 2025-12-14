@@ -203,12 +203,6 @@ p:last-child {
   pointer-events: none;
   overflow: hidden;
   z-index: 0;
-  /* Force iOS Safari to keep this in its own GPU layer */
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  will-change: contents;
 }
 
 .matrix-column {
@@ -1938,24 +1932,3 @@ input:focus-visible {
   background: var(--accent-bright);
 }
 
-/* ============================================================================
-   iOS SAFARI PERFORMANCE FIX
-   backdrop-filter: blur() causes compositing layer conflicts with canvas
-   ============================================================================ */
-
-@supports (-webkit-touch-callout: none) {
-  /* iOS Safari only - disable expensive backdrop-filter */
-  header,
-  .backend-info,
-  .model-status,
-  .model-category,
-  .upload-zone,
-  .analyze-btn,
-  .loading-overlay,
-  .results-panel,
-  .progress-tracker-container {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background-color: rgba(21, 16, 37, 0.94);
-  }
-}

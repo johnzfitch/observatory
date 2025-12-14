@@ -81,9 +81,9 @@ export async function waitForOnnxInit(page, timeout = 10000) {
 export async function waitForModels(page, timeout = 10000) {
   await page.waitForFunction(
     () => {
-      // Check if ModelManager has models
-      const modelCards = document.querySelectorAll('.model-card');
-      return modelCards.length > 0;
+      // Check if model categories are loaded (UI uses .model-category, not .model-card)
+      const modelCategories = document.querySelectorAll('.model-category');
+      return modelCategories.length > 0;
     },
     { timeout }
   );

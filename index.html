@@ -282,7 +282,7 @@
     function initMatrixRain() {
       const canvas = document.getElementById('matrixRain');
       // alpha: false = opaque canvas, eliminates iOS Safari compositor flash
-      // desynchronized: true = reduces latency, better performance
+      // desynchronized: true = reduces input latency
       const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
 
       const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
@@ -336,8 +336,6 @@
 
       initCanvas();
       setInterval(draw, 33);
-
-      window.addEventListener('resize', initCanvas);
     }
 
     // ========================================

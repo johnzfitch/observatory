@@ -13,3 +13,4 @@ playwright-report/
 # Logs
 *.log
 docs/
+*.md

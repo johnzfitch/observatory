@@ -566,20 +566,33 @@ header:hover {
   border-radius: var(--radius-xl);
   padding: 64px var(--spacing-lg);
   text-align: center;
-  transition: all var(--transition-base);
+  transition: border-color var(--transition-base),
+              background var(--transition-base),
+              box-shadow var(--transition-base);
   margin-bottom: var(--spacing-lg);
   background: rgba(21, 16, 37, 0.4);
   backdrop-filter: blur(8px);
   cursor: pointer;
+  /* Mobile optimization: prevent touch delays and unwanted behaviors */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  /* GPU acceleration for smoother transitions */
+  will-change: border-color, background, box-shadow;
+  transform: translateZ(0);
 }
 
-.upload-zone:hover,
+/* Desktop hover only (prevents flash on mobile tap) */
+@media (hover: hover) and (pointer: fine) {
+  .upload-zone:hover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+}
+
+/* Dragover state (works on both desktop and mobile) */
 .upload-zone.dragover {
   border-color: var(--accent);
   background: var(--accent-dim);
-}
-
-.upload-zone.dragover {
   box-shadow: inset 0 0 40px var(--accent-glow);
 }
 
@@ -598,10 +611,13 @@ header:hover {
   color: var(--text-secondary);
 }
 
-.upload-zone:hover .upload-icon {
-  opacity: 1;
-  transform: scale(1.05);
-  color: var(--accent);
+/* Desktop hover only for icon animation */
+@media (hover: hover) and (pointer: fine) {
+  .upload-zone:hover .upload-icon {
+    opacity: 1;
+    transform: scale(1.05);
+    color: var(--accent);
+  }
 }
 
 .upload-text {

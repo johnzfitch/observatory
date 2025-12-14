@@ -1,11 +1,16 @@
 /* The Observatory WebGPU UI - Complete Stylesheet */
 
 /* ============================================================================
-   MOBILE TAP HIGHLIGHT FIX
+   MOBILE TOUCH & SCROLL FIXES
    ============================================================================ */
 
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  overscroll-behavior: none;
+  background-color: #0d0a1a;
 }
 
 /* ============================================================================

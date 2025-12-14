@@ -349,6 +349,29 @@ header:hover {
   font-size: 0.8rem;
 }
 
+.clear-cache-btn {
+  margin-left: var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-cache-btn:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-dim);
+}
+
+.clear-cache-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 640px) {
   header {
     flex-direction: column;
@@ -367,6 +390,11 @@ header:hover {
 
   .backend-info > span:last-child {
     margin-left: 0;
+  }
+
+  .clear-cache-btn {
+    margin-left: 0;
+    margin-top: var(--spacing-sm);
   }
 }
 

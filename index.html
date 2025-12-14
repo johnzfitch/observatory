@@ -67,6 +67,7 @@
       <span class="backend-label">Inference Backend:</span>
       <span class="backend-value loading" id="backendValue">Detecting...</span>
       <span style="margin-left: auto; color: var(--text-muted);">All processing runs locally in your browser</span>
+      <button class="clear-cache-btn" id="clearCacheBtn" title="Clear all cached data and reload">Clear Cache</button>
     </div>
 
     <!-- Upload Zone (MOVED TO TOP) -->
@@ -617,6 +618,66 @@
     }
 
     // ========================================
+    // Clear Cache Button
+    // ========================================
+
+    function setupClearCacheButton() {
+      const btn = document.getElementById('clearCacheBtn');
+      if (!btn) return;
+
+      btn.addEventListener('click', async () => {
+        if (!confirm('Clear all cached data and reload? This will require re-downloading models.')) {
+          return;
+        }
+
+        btn.textContent = 'Clearing...';
+        btn.disabled = true;
+
+        try {
+          // Clear Service Worker caches
+          if ('caches' in window) {
+            const cacheNames = await caches.keys();
+            await Promise.all(cacheNames.map(name => caches.delete(name)));
+            console.log('[ClearCache] SW caches cleared');
+          }
+
+          // Clear IndexedDB (model cache)
+          const databases = await indexedDB.databases?.() || [];
+          for (const db of databases) {
+            if (db.name) {
+              indexedDB.deleteDatabase(db.name);
+              console.log('[ClearCache] Deleted IndexedDB:', db.name);
+            }
+          }
+
+          // Clear localStorage
+          localStorage.clear();
+          console.log('[ClearCache] localStorage cleared');
+
+          // Unregister service workers
+          if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const reg of registrations) {
+              await reg.unregister();
+              console.log('[ClearCache] SW unregistered');
+            }
+          }
+
+          // Reload page
+          window.location.reload(true);
+
+        } catch (error) {
+          console.error('[ClearCache] Error:', error);
+          btn.textContent = 'Error!';
+          setTimeout(() => {
+            btn.textContent = 'Clear Cache';
+            btn.disabled = false;
+          }, 2000);
+        }
+      });
+    }
+
+    // ========================================
     // Analysis Execution
     // ========================================
 
@@ -952,6 +1013,7 @@
         setupClipboardPaste();
         setupAnalyzeButton();
         setupNewAnalysisButton();
+        setupClearCacheButton();
 
         // Hide loading overlay
         setTimeout(() => {

@@ -70,10 +70,66 @@ body {
   --transition-base: 0.25s ease;
   --transition-slow: 0.3s ease;
 
-  /* Shadows */
+  /* Shadows - Legacy */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  /* ==========================================================================
+     DEPTH SYSTEM - 2006 Purist
+     ========================================================================== */
+
+  /* Shadows - Elevation levels */
+  --depth-shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
+  --depth-shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --depth-shadow-lg: 0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+  --depth-shadow-xl: 0 12px 40px rgba(0,0,0,0.5);
+
+  /* Shadows - Inset (recessed elements) */
+  --depth-shadow-inset-sm: inset 0 2px 4px rgba(0,0,0,0.4);
+  --depth-shadow-inset-md: inset 0 4px 8px rgba(0,0,0,0.5);
+  --depth-shadow-inset-lg: inset 0 8px 20px rgba(0,0,0,0.6);
+
+  /* Highlights - Top edge gleam */
+  --depth-highlight-top: inset 0 1px 0 rgba(255,255,255,0.1);
+  --depth-highlight-top-strong: inset 0 1px 0 rgba(255,255,255,0.3);
+
+  /* Gradients - Card/Panel backgrounds */
+  --gradient-card: linear-gradient(180deg, rgba(45,45,70,0.95) 0%, rgba(35,35,55,0.95) 100%);
+  --gradient-header: linear-gradient(180deg, rgba(60,60,90,0.95) 0%, rgba(40,40,65,0.95) 100%);
+  --gradient-status: linear-gradient(180deg, #1a1a2e 0%, #252540 100%);
+  --gradient-recessed: linear-gradient(180deg, rgba(20,20,35,0.95) 0%, rgba(35,35,55,0.95) 100%);
+
+  /* Glows & Effects */
+  --glow-accent: 0 0 12px rgba(124,108,255,0.5);
+  --glow-accent-strong: 0 0 20px rgba(124,108,255,0.8);
+  --glow-success: 0 0 10px rgba(0,255,136,0.6);
+  --glow-warning: 0 0 10px rgba(255,200,0,0.6);
+  --glow-error: 0 0 10px rgba(255,100,100,0.6);
+
+  /* Text shadows */
+  --text-shadow-button: 0 -1px 0 rgba(0,0,0,0.3);
+  --text-shadow-glow: 0 0 20px rgba(124,108,255,0.5);
+  --text-shadow-status: 0 0 10px rgba(0,255,136,0.6);
+
+  /* Borders - Depth system */
+  --border-glass: 1px solid rgba(255,255,255,0.08);
+  --border-subtle: 1px solid rgba(80,80,120,0.3);
+  --border-button: 1px solid rgba(0,0,0,0.2);
+  --border-selected: 3px solid #7c6cff;
+
+  /* Button gradients - Aqua style */
+  --gradient-button: linear-gradient(180deg, #8b7cff 0%, #6b5ce0 45%, #5a4bd0 55%, #6b5ce0 100%);
+  --gradient-button-hover: linear-gradient(180deg, #9b8cff 0%, #7b6cf0 45%, #6a5be0 55%, #7b6cf0 100%);
+  --gradient-button-active: linear-gradient(180deg, #5a4bd0 0%, #4a3bc0 45%, #3a2bb0 55%, #4a3bc0 100%);
+
+  /* Checkbox gradients */
+  --gradient-checkbox: linear-gradient(180deg, #1a1a2e 0%, #252540 100%);
+  --gradient-checkbox-selected: linear-gradient(180deg, #7c6cff 0%, #5a4ad4 100%);
+
+  /* Touch Targets */
+  --touch-min: 44px;
+  --touch-comfortable: 52px;
 }
 
 /* ============================================================================
@@ -264,15 +320,28 @@ header {
   gap: var(--spacing-lg);
   margin-bottom: var(--spacing-2xl);
   padding: var(--spacing-lg) var(--spacing-lg);
-  background: rgba(21, 16, 37, 0.6);
+  background: var(--gradient-header);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: var(--radius-lg);
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
   transition: all var(--transition-base);
 }
 
 header:hover {
-  border-color: var(--border-hover);
+  border-color: rgba(255,255,255,0.12);
+  box-shadow:
+    0 6px 20px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+}
+
+/* Header title enhancement */
+header h1 {
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 .logo {
@@ -304,18 +373,21 @@ header:hover {
   object-fit: contain;
 }
 
-/* Backend Indicator */
+/* Backend Indicator - Instrument Panel Style */
 .backend-info {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-lg);
   padding: var(--spacing-md) var(--spacing-lg);
-  background: rgba(21, 16, 37, 0.4);
+  background: var(--gradient-status);
   backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255,255,255,0.05);
   border-radius: var(--radius-md);
-  font-family: 'JetBrains Mono', monospace;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.5),
+    0 1px 0 rgba(255,255,255,0.05);
+  font-family: 'SF Mono', 'Monaco', 'JetBrains Mono', monospace;
   font-size: 0.85rem;
   line-height: 1.4;
 }
@@ -323,20 +395,25 @@ header:hover {
 .backend-label {
   color: var(--text-muted);
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
 }
 
 .backend-value {
   color: var(--cyan);
   font-weight: 700;
-  transition: color var(--transition-base);
+  transition: color var(--transition-base), text-shadow var(--transition-base);
 }
 
 .backend-value.webgpu {
-  color: var(--success);
+  color: #00ff88;
+  text-shadow: 0 0 10px rgba(0,255,136,0.6);
 }
 
 .backend-value.wasm {
   color: var(--warning);
+  text-shadow: 0 0 10px rgba(255,200,0,0.4);
 }
 
 .backend-value.loading {
@@ -350,22 +427,39 @@ header:hover {
   font-size: 0.8rem;
 }
 
+/* Clear Cache Button - Aqua Style */
 .clear-cache-btn {
   margin-left: var(--spacing-md);
   padding: var(--spacing-xs) var(--spacing-sm);
-  background: transparent;
-  border: 1px solid var(--border);
+  /* Mini Aqua gradient */
+  background: linear-gradient(180deg, rgba(70,60,90,0.9) 0%, rgba(55,45,75,0.9) 45%, rgba(50,40,70,0.9) 55%, rgba(55,45,75,0.9) 100%);
+  border: 1px solid rgba(0,0,0,0.2);
   border-radius: var(--radius-sm);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+  text-shadow: 0 -1px 0 rgba(0,0,0,0.2);
 }
 
 .clear-cache-btn:hover {
-  border-color: var(--danger);
-  color: var(--danger);
-  background: var(--danger-dim);
+  /* Danger Aqua gradient on hover */
+  background: linear-gradient(180deg, #ff6b6b 0%, #ee5555 45%, #dd4444 55%, #ee5555 100%);
+  border-color: rgba(0,0,0,0.2);
+  color: white;
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.3),
+    0 0 10px rgba(239, 68, 68, 0.4),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+.clear-cache-btn:active {
+  background: linear-gradient(180deg, #dd4444 0%, #cc3333 45%, #bb2222 55%, #cc3333 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.4);
 }
 
 .clear-cache-btn:disabled {
@@ -479,22 +573,33 @@ header:hover {
 
 .model-category {
   padding: var(--spacing-lg);
-  background: rgba(21, 16, 37, 0.4);
+  background: var(--gradient-card);
   backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: var(--radius-md);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.4),
+    0 2px 8px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.1);
   transition: all var(--transition-base);
 }
 
 .model-category:hover {
-  border-color: var(--border-hover);
-  background: rgba(30, 23, 53, 0.5);
+  border-color: rgba(255,255,255,0.12);
+  background: linear-gradient(180deg, rgba(50,50,75,0.95) 0%, rgba(40,40,60,0.95) 100%);
+  box-shadow:
+    0 10px 36px rgba(0,0,0,0.45),
+    0 3px 10px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.12);
 }
 
 .model-category.selected {
   border-color: var(--accent);
-  background: var(--accent-dim);
-  box-shadow: 0 0 32px var(--accent-glow);
+  background: linear-gradient(180deg, rgba(60,50,90,0.95) 0%, rgba(45,40,70,0.95) 100%);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.4),
+    0 0 32px var(--accent-glow),
+    inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
 .model-category-header {
@@ -551,36 +656,58 @@ header:hover {
 }
 
 /* ============================================================================
-   UPLOAD ZONE
+   UPLOAD ZONE - 2006 Purist "Mail Slot" Design
    ============================================================================ */
 
 .upload-zone {
   position: relative;
-  border: 2px dashed var(--border);
-  border-radius: var(--radius-xl);
+  /* Solid border instead of dashed - physical slot appearance */
+  border: 2px solid rgba(80,80,120,0.3);
+  border-radius: 20px;
   padding: 64px var(--spacing-lg);
   text-align: center;
   transition: all var(--transition-base);
   margin-bottom: var(--spacing-lg);
-  background: rgba(21, 16, 37, 0.4);
+  /* Recessed slot gradient */
+  background: var(--gradient-recessed);
   backdrop-filter: blur(8px);
   cursor: pointer;
+  /* Recessed "slot" effect with inset shadows */
+  box-shadow:
+    inset 0 8px 20px rgba(0,0,0,0.6),
+    inset 0 -2px 6px rgba(255,255,255,0.03),
+    0 4px 12px rgba(0,0,0,0.4);
 }
 
-.upload-zone:hover,
-.upload-zone.dragover {
-  border-color: var(--accent);
-  background: var(--accent-dim);
+.upload-zone:hover {
+  border-color: rgba(124,108,255,0.5);
+  background: linear-gradient(180deg, rgba(25,25,45,0.95) 0%, rgba(40,40,65,0.95) 100%);
+  box-shadow:
+    inset 0 8px 20px rgba(0,0,0,0.4),
+    inset 0 -2px 6px rgba(255,255,255,0.05),
+    0 0 20px rgba(124,108,255,0.3),
+    0 4px 12px rgba(0,0,0,0.4);
 }
 
 .upload-zone.dragover {
-  box-shadow: inset 0 0 40px var(--accent-glow);
+  border-color: rgba(124,108,255,0.7);
+  background: linear-gradient(180deg, rgba(30,25,55,0.95) 0%, rgba(45,40,75,0.95) 100%);
+  box-shadow:
+    inset 0 6px 16px rgba(0,0,0,0.3),
+    inset 0 -2px 8px rgba(255,255,255,0.08),
+    0 0 30px rgba(124,108,255,0.5),
+    0 0 60px rgba(124,108,255,0.2),
+    0 4px 12px rgba(0,0,0,0.4);
 }
 
 .upload-zone.has-image {
   padding: var(--spacing-lg);
   border-style: solid;
   border-color: var(--success);
+  box-shadow:
+    inset 0 4px 12px rgba(0,0,0,0.3),
+    0 0 20px rgba(34, 197, 94, 0.2),
+    0 4px 12px rgba(0,0,0,0.4);
 }
 
 .upload-icon {
@@ -590,12 +717,16 @@ header:hover {
   opacity: 0.7;
   transition: all var(--transition-base);
   color: var(--text-secondary);
+  /* Icon shadow for depth */
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
 .upload-zone:hover .upload-icon {
   opacity: 1;
-  transform: scale(1.05);
+  /* Float up on hover for tactile feel */
+  transform: translateY(-4px);
   color: var(--accent);
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6)) drop-shadow(0 0 8px rgba(124,108,255,0.3));
 }
 
 .upload-text {
@@ -716,15 +847,16 @@ header:hover {
 }
 
 /* ============================================================================
-   ANALYZE BUTTON & NEW ANALYSIS BUTTON
+   ANALYZE BUTTON & NEW ANALYSIS BUTTON - 2006 Aqua Style
    ============================================================================ */
 
 .analyze-btn {
   width: 100%;
   padding: 22px 28px;
-  background: rgba(30, 23, 53, 0.4);
+  /* Disabled state - subdued gradient */
+  background: linear-gradient(180deg, rgba(50,45,70,0.8) 0%, rgba(40,35,60,0.8) 45%, rgba(35,30,55,0.8) 55%, rgba(40,35,60,0.8) 100%);
   backdrop-filter: blur(8px);
-  border: 2px solid var(--border);
+  border: 1px solid rgba(0,0,0,0.3);
   border-radius: var(--radius-lg);
   font-family: inherit;
   font-size: 1.15rem;
@@ -738,13 +870,19 @@ header:hover {
   justify-content: center;
   gap: var(--spacing-md);
   user-select: none;
+  /* Aqua-style shadows */
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
 .new-analysis-btn {
   width: 100%;
   padding: 18px 28px;
-  background: var(--accent);
-  border: 2px solid var(--accent);
+  /* Aqua gradient */
+  background: var(--gradient-button);
+  border: 1px solid rgba(0,0,0,0.2);
   border-radius: var(--radius-lg);
   font-family: inherit;
   font-size: 1.1rem;
@@ -755,17 +893,30 @@ header:hover {
   margin: var(--spacing-lg) 0 var(--spacing-2xl) 0;
   display: block;
   user-select: none;
-  box-shadow: 0 0 40px var(--accent-glow);
+  /* Aqua-style box shadow with glow */
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.3),
+    0 0 20px rgba(124,108,255,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  text-shadow: var(--text-shadow-button);
 }
 
 .new-analysis-btn:hover {
-  background: rgba(124, 92, 255, 0.9);
+  background: var(--gradient-button-hover);
   transform: translateY(-2px);
-  box-shadow: 0 8px 48px var(--accent-glow);
+  box-shadow:
+    0 4px 8px rgba(0,0,0,0.35),
+    0 0 30px rgba(124,108,255,0.5),
+    0 0 12px rgba(124,108,255,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.35);
 }
 
 .new-analysis-btn:active {
   transform: translateY(0);
+  background: var(--gradient-button-active);
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.4),
+    0 0 15px rgba(124,108,255,0.3);
 }
 
 .analyze-btn:disabled {
@@ -774,27 +925,45 @@ header:hover {
 }
 
 .analyze-btn.ready {
-  background: var(--accent);
-  border-color: var(--accent);
+  /* Full Aqua gradient when ready */
+  background: var(--gradient-button);
+  border: 1px solid rgba(0,0,0,0.2);
   color: white;
   cursor: pointer;
-  box-shadow: 0 0 40px var(--accent-glow);
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.3),
+    0 0 20px rgba(124,108,255,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  text-shadow: var(--text-shadow-button);
 }
 
 .analyze-btn.ready:hover:not(:disabled) {
+  background: var(--gradient-button-hover);
   transform: translateY(-2px);
-  box-shadow: 0 8px 48px var(--accent-glow);
+  box-shadow:
+    0 4px 8px rgba(0,0,0,0.35),
+    0 0 30px rgba(124,108,255,0.5),
+    0 0 12px rgba(124,108,255,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.35);
 }
 
 .analyze-btn.ready:active:not(:disabled) {
   transform: translateY(0);
+  background: var(--gradient-button-active);
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.4),
+    0 0 15px rgba(124,108,255,0.3);
 }
 
 .analyze-btn.scanning {
-  background: var(--cyan-dim);
+  background: linear-gradient(180deg, rgba(50,70,80,0.8) 0%, rgba(40,60,70,0.8) 45%, rgba(35,55,65,0.8) 55%, rgba(40,60,70,0.8) 100%);
   border-color: var(--cyan);
   color: var(--cyan);
   cursor: wait;
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.3),
+    0 0 15px rgba(34, 211, 238, 0.3),
+    inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
 .btn-text {
@@ -815,7 +984,7 @@ header:hover {
 }
 
 /* ============================================================================
-   LOADING OVERLAY
+   LOADING OVERLAY - 2006 Purist "Powering Up" Effect
    ============================================================================ */
 
 .loading-overlay {
@@ -836,14 +1005,37 @@ header:hover {
   pointer-events: none;
 }
 
+/* Progress Ring / Spinner with glow effect */
 .loading-spinner {
   width: 80px;
   height: 80px;
-  border: 4px solid var(--border);
-  border-top-color: var(--accent);
+  border: 4px solid rgba(60,60,90,0.5);
+  border-top-color: #7c6cff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: var(--spacing-lg);
+  /* Progress ring glow */
+  filter: drop-shadow(0 0 10px rgba(124,108,255,0.5));
+  box-shadow:
+    0 0 20px rgba(124,108,255,0.3),
+    inset 0 0 15px rgba(124,108,255,0.1);
+}
+
+/* Progress ring pulse glow animation */
+@keyframes progress-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(124,108,255,0.8));
+    box-shadow: 0 0 20px rgba(124,108,255,0.3);
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(124,108,255,1));
+    box-shadow: 0 0 35px rgba(124,108,255,0.5);
+  }
+}
+
+/* Apply pulse animation to spinner */
+.loading-spinner {
+  animation: spin 1s linear infinite, progress-glow 2s ease-in-out infinite;
 }
 
 @keyframes spin {
@@ -852,16 +1044,32 @@ header:hover {
   }
 }
 
-.loading-text {
-  font-size: 1.2rem;
-  color: var(--text-primary);
+/* Init/Loading Title with glow effect */
+.loading-text,
+.init-title {
+  font-size: 1.5rem;
+  color: #c0c0ff;
   margin-bottom: var(--spacing-sm);
   font-weight: 700;
+  /* Glowing title text */
+  text-shadow: var(--text-shadow-glow);
+  animation: title-glow 3s ease-in-out infinite;
 }
 
-.loading-subtext {
+@keyframes title-glow {
+  0%, 100% {
+    text-shadow: 0 0 15px rgba(124,108,255,0.4);
+  }
+  50% {
+    text-shadow: 0 0 25px rgba(124,108,255,0.7), 0 0 40px rgba(124,108,255,0.3);
+  }
+}
+
+/* Subtitle as secondary text */
+.loading-subtext,
+.init-subtitle {
   font-size: 0.9rem;
-  color: var(--text-muted);
+  color: rgba(200,200,220,0.7);
   font-family: 'JetBrains Mono', monospace;
   text-align: center;
   max-width: 300px;
@@ -874,13 +1082,17 @@ header:hover {
   background: rgba(30, 23, 53, 0.6);
   border-radius: 2px;
   overflow: hidden;
+  /* Subtle glow around progress track */
+  box-shadow: 0 0 8px rgba(0,0,0,0.3);
 }
 
 .loading-progress-fill {
   height: 100%;
-  background: var(--accent);
+  background: linear-gradient(90deg, #6b5ce0, #8b7cff);
   border-radius: 2px;
   animation: progressAnim 2s ease-in-out infinite;
+  /* Glow on progress bar */
+  box-shadow: 0 0 8px rgba(124,108,255,0.6);
 }
 
 @keyframes progressAnim {
@@ -903,11 +1115,15 @@ header:hover {
    ============================================================================ */
 
 .results-panel {
-  background: rgba(21, 16, 37, 0.4);
+  background: var(--gradient-card);
   backdrop-filter: blur(8px);
-  border: 2px solid var(--border);
+  border: 2px solid rgba(255,255,255,0.08);
   border-radius: var(--radius-xl);
   overflow: hidden;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.4),
+    0 2px 8px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.1);
   transition: all var(--transition-slow);
   display: none;
 }
@@ -1394,13 +1610,66 @@ header:hover {
 }
 
 /* ============================================================================
-   INTERACTIVE ELEMENT STATES
+   INTERACTIVE ELEMENT STATES & MICRO-INTERACTIONS - 2006 Purist Polish
    ============================================================================ */
 
+/* Focus states with glow effect (Phase 4.3) */
 button:focus-visible,
-input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+input:focus-visible,
+.model-item:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--bg-primary),
+    0 0 0 4px rgba(124,108,255,0.7),
+    0 0 15px rgba(124,108,255,0.4);
+}
+
+/* Focus state for upload zone */
+.upload-zone:focus-visible,
+.upload-zone:focus-within {
+  outline: none;
+  border-color: rgba(124,108,255,0.7);
+  box-shadow:
+    inset 0 8px 20px rgba(0,0,0,0.4),
+    0 0 0 2px var(--bg-primary),
+    0 0 0 4px rgba(124,108,255,0.5),
+    0 0 20px rgba(124,108,255,0.3);
+}
+
+/* Smooth hover transitions for all interactive elements */
+button,
+.model-item,
+.model-category,
+.upload-zone,
+.toast-btn,
+.preview-image,
+.model-vote {
+  transition: all var(--transition-base);
+}
+
+/* Subtle hover lift on cards (Phase 4.3) */
+.model-category:hover {
+  transform: translateY(-2px);
+}
+
+.results-panel:hover {
+  transform: translateY(-1px);
+}
+
+/* Hover lift for model votes */
+.model-vote:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.3),
+    0 0 8px rgba(124,108,255,0.2);
+}
+
+/* Preview image hover lift */
+.preview-image:hover {
+  transform: scale(1.02) translateY(-2px);
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.4),
+    0 0 15px rgba(124,108,255,0.2);
 }
 
 /* Reduce motion for users who prefer it */
@@ -1502,20 +1771,6 @@ input:focus-visible {
   margin-bottom: var(--spacing-lg);
 }
 
-.model-category {
-  padding: var(--spacing-lg);
-  background: rgba(21, 16, 37, 0.4);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-base);
-}
-
-.model-category:hover {
-  border-color: var(--border-hover);
-  background: rgba(30, 23, 53, 0.5);
-}
-
 .model-category-header {
   display: flex;
   align-items: flex-start;
@@ -1552,11 +1807,13 @@ input:focus-visible {
   margin-bottom: var(--spacing-md);
 }
 
+/* Category Buttons (Select All, Clear) - Aqua Style */
 .category-btn {
   flex: 1;
   padding: var(--spacing-xs) var(--spacing-md);
-  background: rgba(30, 23, 53, 0.6);
-  border: 1px solid var(--border);
+  /* Aqua gradient */
+  background: linear-gradient(180deg, rgba(70,65,95,0.9) 0%, rgba(55,50,80,0.9) 45%, rgba(50,45,75,0.9) 55%, rgba(55,50,80,0.9) 100%);
+  border: 1px solid rgba(0,0,0,0.2);
   border-radius: var(--radius-sm);
   font-family: inherit;
   font-size: 0.85rem;
@@ -1564,12 +1821,26 @@ input:focus-visible {
   color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--transition-base);
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.1);
+  text-shadow: 0 -1px 0 rgba(0,0,0,0.2);
 }
 
 .category-btn:hover {
-  background: rgba(124, 92, 255, 0.15);
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--gradient-button-hover);
+  border-color: rgba(0,0,0,0.2);
+  color: white;
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.3),
+    0 0 10px rgba(124,108,255,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+.category-btn:active {
+  background: var(--gradient-button-active);
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.4);
 }
 
 .model-list-in-category {
@@ -1580,24 +1851,88 @@ input:focus-visible {
   overflow-y: auto;
 }
 
+/* Model Items with Checkbox - 2006 Purist Style */
 .model-list-in-category .model-item {
   cursor: pointer;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: rgba(30, 23, 53, 0.4);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  /* Add padding-left for checkbox space */
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-sm) 40px;
+  /* Raised item gradient */
+  background: linear-gradient(180deg, #2a2a45 0%, #1f1f35 100%);
+  border: 1px solid rgba(80,80,120,0.2);
+  border-radius: 8px;
+  transition: all var(--transition-base);
+  position: relative;
+  /* Raised appearance */
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* Checkbox pseudo-element (::before) */
+.model-list-in-category .model-item::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  /* Recessed checkbox background */
+  background: var(--gradient-checkbox);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+  border: 1px solid rgba(80,80,120,0.3);
   transition: all var(--transition-base);
 }
 
-.model-list-in-category .model-item:hover {
-  background: rgba(30, 23, 53, 0.6);
-  border-color: var(--border-hover);
+/* Checkmark pseudo-element (::after) - hidden by default */
+.model-list-in-category .model-item::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  width: 6px;
+  height: 10px;
+  border: solid transparent;
+  border-width: 0 2px 2px 0;
+  transform: translateY(-60%) rotate(45deg);
+  transition: all var(--transition-base);
+  opacity: 0;
 }
 
+.model-list-in-category .model-item:hover {
+  background: linear-gradient(180deg, #323250 0%, #272745 100%);
+  border-color: rgba(100,100,140,0.3);
+  box-shadow:
+    0 3px 6px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* Selected state with checkbox styling */
 .model-list-in-category .model-item.selected {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  color: var(--accent);
+  background: linear-gradient(180deg, rgba(60,50,90,0.95) 0%, rgba(45,40,70,0.95) 100%);
+  /* Left border accent for selected */
+  border-left: 3px solid #7c6cff;
+  border-color: rgba(124,108,255,0.4);
+  color: #c0c0ff;
+  /* Inset shadow for selected */
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.4),
+    0 0 12px rgba(124,108,255,0.2);
+  padding-left: 38px; /* Adjust for thicker left border */
+}
+
+/* Selected checkbox - glowing gradient */
+.model-list-in-category .model-item.selected::before {
+  background: var(--gradient-checkbox-selected);
+  box-shadow: 0 0 8px rgba(124,108,255,0.5);
+  border-color: rgba(124,108,255,0.6);
+}
+
+/* Show checkmark when selected */
+.model-list-in-category .model-item.selected::after {
+  border-color: white;
+  opacity: 1;
 }
 
 .model-list-in-category .model-item.loading {
@@ -1930,5 +2265,175 @@ input:focus-visible {
 
 .toast-reload:hover {
   background: var(--accent-bright);
+}
+
+/* ============================================================================
+   MOBILE OPTIMIZATION - 2006 Purist (Phase 3)
+   iPhone OS 1 Standards: Tactile, Obvious, Delightful
+   ============================================================================ */
+
+/* --------------------------------------------------------------------------
+   3.4 Tablet Optimization (768px breakpoint)
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) and (min-width: 481px) {
+  /* Touch target sizing for tablet */
+  .analyze-btn,
+  .new-analysis-btn,
+  .category-btn,
+  .clear-cache-btn,
+  .toast-btn {
+    min-height: var(--touch-min);
+    padding: 10px 20px;
+  }
+
+  .model-item {
+    min-height: var(--touch-min);
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .container {
+    padding: 20px;
+  }
+
+  /* Ensure buttons are touchable */
+  .model-category-actions button {
+    min-height: var(--touch-min);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3.1-3.3 Mobile Optimization (480px breakpoint)
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  /* 3.1.1 Touch Target Sizing - Minimum 44px height */
+  .analyze-btn,
+  .new-analysis-btn,
+  .category-btn,
+  .clear-cache-btn,
+  .toast-btn,
+  [class*="btn"] {
+    min-height: var(--touch-min);
+    font-size: 16px; /* 3.1.2 Prevent iOS zoom on focus */
+    padding: 12px 24px;
+  }
+
+  /* 3.1.3 Model item touch targets */
+  .model-item,
+  .model-list-in-category .model-item {
+    min-height: var(--touch-comfortable);
+    padding: 12px 16px;
+    font-size: 16px;
+  }
+
+  /* 3.2.1 Pill-shaped mobile buttons */
+  .analyze-btn,
+  .new-analysis-btn {
+    border-radius: 22px;
+  }
+
+  /* 3.2.3-3.2.4 Active states for touch feedback */
+  .analyze-btn:active,
+  .new-analysis-btn:active,
+  .category-btn:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+
+  /* 3.3.1-3.3.2 Container and card padding */
+  .container {
+    padding: 16px;
+  }
+
+  .model-category {
+    margin-bottom: 16px;
+    padding: var(--spacing-md);
+  }
+
+  /* 3.3.3 Stack action buttons vertically */
+  .model-category-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .model-category-actions button {
+    width: 100%;
+    min-height: var(--touch-min);
+  }
+
+  /* 3.3.4 Hide redundant footer hint on small screens */
+  .footer-hint {
+    display: none;
+  }
+
+  /* Header adjustments for mobile */
+  header {
+    padding: var(--spacing-md);
+  }
+
+  .backend-info {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  /* Upload zone mobile adjustments */
+  .upload-zone {
+    padding: 40px var(--spacing-md);
+  }
+
+  /* Results panel mobile */
+  .results-header {
+    padding: var(--spacing-md);
+  }
+
+  .results-body {
+    padding: var(--spacing-md);
+  }
+
+  /* Toast notification mobile */
+  .update-toast {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    transform: translateY(200px);
+  }
+
+  .update-toast.show {
+    transform: translateY(0);
+  }
+
+  .toast-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .toast-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3.5 Touch Feedback for Touch Devices
+   -------------------------------------------------------------------------- */
+@media (hover: none) and (pointer: coarse) {
+  /* Enhanced active states for touch devices */
+  .analyze-btn:active,
+  .new-analysis-btn:active,
+  .category-btn:active,
+  .model-item:active,
+  .toast-btn:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+
+  /* Remove hover effects that don't work well on touch */
+  .model-category:hover {
+    transform: none;
+  }
+
+  /* Ensure clear visual feedback on tap */
+  .model-item:active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+  }
 }
 

@@ -1,0 +1,186 @@
+# Phase 5: Fix Remove Button
+
+## Time: 1 hour
+
+## File: index.html
+
+## The Bug
+
+Current behavior:
+- Clicking "Remove" reopens the file browser
+- Running analysis continues after remove
+- Should ONLY remove the image, nothing else
+
+## Root Cause (likely)
+
+The remove button is probably:
+1. Inside a label that wraps the file input, OR
+2. Click event bubbles to parent that triggers file input, OR
+3. Calls fileInput.click() somewhere in handler, OR
+4. Resets fileInput in a way that triggers change event
+
+## The Fix
+
+```js
+// Store reference to current analysis for cancellation
+let currentAnalysis = null;
+
+function handleRemove(e) {
+  // CRITICAL: Stop all event propagation
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+
+  console.log('[Remove] Removing image...');
+
+  // 1. Cancel running analysis (if any)
+  if (currentAnalysis) {
+    console.log('[Remove] Cancelling analysis...');
+    currentAnalysis.abort();
+    currentAnalysis = null;
+  }
+
+  // 2. Clear image preview
+  const preview = document.getElementById('imagePreview');
+  if (preview) {
+    preview.src = '';
+    preview.style.display = 'none';
+  }
+
+  // 3. Reset file input WITHOUT triggering click
+  const fileInput = document.getElementById('fileInput');
+  if (fileInput) {
+    // Temporarily remove change listener to prevent side effects
+    const oldOnChange = fileInput.onchange;
+    fileInput.onchange = null;
+    fileInput.value = '';
+    fileInput.onchange = oldOnChange;
+  }
+
+  // 4. Reset app state
+  AppState.imageUploaded = false;
+  AppState.autoAnalysisTriggered = false;
+
+  // 5. Update UI
+  updateAnalyzeButton();
+  hideResults();
+  showUploadArea();
+
+  console.log('[Remove] Done');
+}
+
+// IMPORTANT: Attach handler correctly
+const removeBtn = document.getElementById('removeBtn');
+if (removeBtn) {
+  // Remove any existing handlers
+  removeBtn.replaceWith(removeBtn.cloneNode(true));
+  
+  // Get fresh reference and attach
+  const freshRemoveBtn = document.getElementById('removeBtn');
+  freshRemoveBtn.addEventListener('click', handleRemove, { capture: true });
+}
+```
+
+## Check DOM Structure
+
+Look for this anti-pattern:
+
+```html
+<!-- BAD: Button inside label triggers input -->
+<label for="fileInput">
+  <button id="removeBtn">Remove</button>  <!-- WRONG -->
+</label>
+
+<!-- GOOD: Button separate from label -->
+<div class="upload-controls">
+  <label for="fileInput">Select file</label>
+  <button id="removeBtn">Remove</button>  <!-- Separate -->
+</div>
+```
+
+If the button IS inside a label, move it outside.
+
+## Add Abort Support to InferenceEngine
+
+```js
+// In InferenceEngine.js or wherever analysis runs
+
+class InferenceEngine {
+  #abortController = null;
+
+  async analyze(image) {
+    // Create new abort controller for this analysis
+    this.#abortController = new AbortController();
+    
+    const results = [];
+    
+    for (const model of this.models) {
+      // Check if aborted before each model
+      if (this.#abortController.signal.aborted) {
+        console.log('[InferenceEngine] Analysis aborted');
+        throw new DOMException('Analysis aborted', 'AbortError');
+      }
+      
+      const result = await this.runModel(model, image);
+      results.push(result);
+    }
+    
+    return results;
+  }
+
+  abort() {
+    if (this.#abortController) {
+      this.#abortController.abort();
+      this.#abortController = null;
+    }
+  }
+}
+```
+
+## Update startAnalysis()
+
+```js
+async function startAnalysis() {
+  // Store reference for cancellation
+  currentAnalysis = inferenceEngine;
+  
+  try {
+    const results = await inferenceEngine.analyze(currentImage);
+    displayResults(results);
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('[Analysis] Cancelled by user');
+      // Don't show error - user intentionally cancelled
+    } else {
+      console.error('[Analysis] Error:', error);
+      showError('Analysis failed');
+    }
+  } finally {
+    currentAnalysis = null;
+  }
+}
+```
+
+## Verify
+
+1. Upload an image
+2. Click Remove button
+3. Verify: Image disappears
+4. Verify: File browser does NOT open
+5. Verify: Console shows "[Remove] Done"
+
+Test cancellation:
+1. Upload image
+2. Click Analyze
+3. While analyzing, click Remove
+4. Verify: Analysis stops
+5. Verify: No errors in console
+6. Verify: UI resets cleanly
+
+## Done when
+
+- Remove ONLY removes image
+- File browser never opens on remove
+- Running analysis cancels cleanly
+- No console errors
+- UI resets to initial state

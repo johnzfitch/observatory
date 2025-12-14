@@ -9,6 +9,11 @@ html, body {
   background-color: #0d0a1a;
 }
 
+/* iOS safe area insets for notch/home indicator */
+body {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
 /* ============================================================================
    ROOT VARIABLES & COLOR SYSTEM
    ============================================================================ */

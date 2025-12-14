@@ -1,0 +1,201 @@
+# Phase 3: IntroAnimation
+
+## Time: 1 hour
+
+## File: js/IntroAnimation.js (NEW FILE)
+
+## Purpose
+
+5-second branded loading overlay that shows while models load in background.
+Professional "app is starting" feel.
+
+## Requirements
+
+- Overlay appears immediately on page load
+- Shows model loading progress (syncs with BackgroundModelLoader)
+- Non-blocking - models load behind it
+- Auto-dismisses after 5 seconds OR user clicks skip
+- Smooth fade-out transition
+
+## Implementation
+
+```js
+class IntroAnimation {
+  #overlay = null;
+  #progressFill = null;
+  #progressText = null;
+
+  constructor() {
+    this.#createDOM();
+  }
+
+  #createDOM() {
+    this.#overlay = document.createElement('div');
+    this.#overlay.className = 'intro-overlay';
+    this.#overlay.innerHTML = `
+      <div class="intro-content">
+        <h1 class="intro-title">AI Detector</h1>
+        <p class="intro-tagline">Detecting synthetic media</p>
+        <div class="intro-loading-bar">
+          <div class="intro-loading-fill"></div>
+        </div>
+        <p class="intro-loading-text">Loading models... 0/4</p>
+        <button class="intro-skip-btn">Skip</button>
+      </div>
+    `;
+
+    this.#progressFill = this.#overlay.querySelector('.intro-loading-fill');
+    this.#progressText = this.#overlay.querySelector('.intro-loading-text');
+
+    // Skip button handler
+    const skipBtn = this.#overlay.querySelector('.intro-skip-btn');
+    skipBtn.addEventListener('click', () => this.hide());
+  }
+
+  show() {
+    document.body.appendChild(this.#overlay);
+    // Force reflow for animation
+    this.#overlay.offsetHeight;
+    this.#overlay.classList.add('visible');
+  }
+
+  hide() {
+    this.#overlay.classList.add('hiding');
+    this.#overlay.addEventListener('transitionend', () => {
+      this.#overlay.remove();
+    }, { once: true });
+  }
+
+  updateProgress(loaded, total) {
+    const percent = (loaded / total) * 100;
+    this.#progressFill.style.width = `${percent}%`;
+    this.#progressText.textContent = `Loading models... ${loaded}/${total}`;
+    
+    if (loaded === total) {
+      this.#progressText.textContent = 'Ready!';
+    }
+  }
+}
+
+export { IntroAnimation };
+```
+
+## CSS (add to styles.css)
+
+```css
+/* Intro Animation Overlay */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary, #0a0a0f);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}
+
+.intro-overlay.visible {
+  opacity: 1;
+}
+
+.intro-overlay.hiding {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-content {
+  text-align: center;
+  color: #fff;
+}
+
+.intro-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+}
+
+.intro-tagline {
+  opacity: 0.6;
+  margin: 0 0 2rem 0;
+  font-size: 1rem;
+}
+
+.intro-loading-bar {
+  width: 240px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0 auto 1rem;
+}
+
+.intro-loading-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent, #00ff88);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.intro-loading-text {
+  font-size: 0.875rem;
+  opacity: 0.7;
+  margin: 0 0 1.5rem 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.intro-skip-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.5);
+  padding: 0.5rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.intro-skip-btn:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.4; }
+}
+```
+
+## Usage
+
+```js
+const intro = new IntroAnimation();
+intro.show();
+
+// Connect to BackgroundModelLoader
+loader.addEventListener('progress', (e) => {
+  intro.updateProgress(e.detail.loaded, e.detail.total);
+});
+
+// Auto-hide after 5 seconds
+setTimeout(() => intro.hide(), 5000);
+```
+
+## Verify
+
+1. Hard refresh page
+2. Overlay appears immediately
+3. Progress bar fills as models load
+4. Skip button works
+5. Auto-hides after 5 seconds
+6. Fade-out is smooth
+
+## Done when
+
+- Overlay shows on load
+- Progress updates work
+- Skip and auto-hide work
+- No flickering on mobile web page or jank

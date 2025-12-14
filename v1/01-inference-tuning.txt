@@ -1,0 +1,44 @@
+# Phase 1: InferenceEngine Tuning
+
+## Time: 5 minutes
+
+## File: js/InferenceEngine.js
+
+## Task
+
+Find and update these two values:
+
+```js
+// FIND:
+maxConcurrency: 4
+
+// CHANGE TO:
+maxConcurrency: 2   // Smoother UX, less GPU contention
+```
+
+```js
+// FIND:
+timeout: 30000
+
+// CHANGE TO:
+timeout: 120000     // 120s for slow connections/large models
+```
+
+## Why
+
+- maxConcurrency 2 instead of 4: Less resource contention, smoother progress updates
+- timeout 120s instead of 30s: Large models on mobile/slow connections need more time
+
+## Verify
+
+After changes, run existing test:
+1. Load page
+2. Upload any image
+3. Confirm all 4 models still score correctly
+4. Check console for no new errors
+
+## Done when
+
+- Both values updated
+- Existing functionality still works
+- No regressions

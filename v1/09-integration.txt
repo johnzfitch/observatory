@@ -1,0 +1,387 @@
+# Phase 9: Integration
+
+## Time: 2 hours
+
+## File: index.html (main integration point)
+
+## Purpose
+
+Wire all the new components together into a cohesive flow.
+
+## Script Imports
+
+Add to index.html (before closing `</body>`, in order):
+
+```html
+<script src="js/BackgroundModelLoader.js"></script>
+<script src="js/IntroAnimation.js"></script>
+<!-- existing scripts -->
+```
+
+## App State Machine
+
+```js
+const AppState = {
+  current: 'INTRO',  // INTRO | READY | ANALYZING | RESULTS
+  modelsReady: false,
+  imageUploaded: false,
+  autoAnalysisTriggered: false,
+  currentAnalysis: null,  // For cancellation
+  isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+};
+```
+
+## Complete init() Function
+
+```js
+// Global references
+let introAnimation = null;
+let backgroundLoader = null;
+let inferenceEngine = null;
+
+async function init() {
+  console.log('[Init] Starting...');
+  console.log('[Init] Mobile:', AppState.isMobile);
+
+  // 1. Create intro animation and show immediately
+  introAnimation = new IntroAnimation();
+  introAnimation.show();
+
+  // 2. Determine which models to load
+  const modelsToLoad = getModelsForDevice();
+  console.log('[Init] Models to load:', modelsToLoad);
+
+  // 3. Create background loader
+  backgroundLoader = new BackgroundModelLoader(
+    MODEL_CONFIGS.filter(m => modelsToLoad.includes(m.id))
+  );
+
+  // 4. Wire up loader events
+  backgroundLoader.addEventListener('progress', (e) => {
+    console.log('[Loader] Progress:', e.detail);
+    introAnimation.updateProgress(e.detail.loaded, e.detail.total);
+    updateAnalyzeButton();
+  });
+
+  backgroundLoader.addEventListener('modelLoaded', (e) => {
+    console.log('[Loader] Model ready:', e.detail.modelName);
+  });
+
+  backgroundLoader.addEventListener('allLoaded', () => {
+    console.log('[Loader] All models ready');
+    AppState.modelsReady = true;
+    updateAnalyzeButton();
+    checkAutoAnalysisTrigger();
+  });
+
+  backgroundLoader.addEventListener('error', (e) => {
+    console.error('[Loader] Model failed:', e.detail);
+    // Continue with other models
+  });
+
+  // 5. Start loading models (non-blocking)
+  backgroundLoader.startLoading();
+
+  // 6. Setup other handlers
+  setupClipboardPaste();
+  setupDragDrop();
+  setupFileInput();
+  setupRemoveButton();
+  setupAnalyzeButton();
+
+  // 7. Auto-hide intro after 5 seconds
+  setTimeout(() => {
+    introAnimation.hide();
+    AppState.current = 'READY';
+    console.log('[Init] Intro hidden, state: READY');
+  }, 5000);
+
+  // 8. Show mobile notice if applicable
+  if (AppState.isMobile && modelsToLoad.length < MODEL_CONFIGS.length) {
+    setTimeout(() => {
+      showToast(`Using ${modelsToLoad.length}/${MODEL_CONFIGS.length} models (optimized for mobile)`);
+    }, 5500);
+  }
+
+  console.log('[Init] Complete');
+}
+```
+
+## Auto-Analysis Trigger
+
+```js
+function checkAutoAnalysisTrigger() {
+  console.log('[AutoTrigger] Checking...', {
+    modelsReady: AppState.modelsReady,
+    imageUploaded: AppState.imageUploaded,
+    alreadyTriggered: AppState.autoAnalysisTriggered,
+    state: AppState.current
+  });
+
+  if (
+    AppState.modelsReady &&
+    AppState.imageUploaded &&
+    !AppState.autoAnalysisTriggered &&
+    AppState.current === 'READY'
+  ) {
+    console.log('[AutoTrigger] Starting auto-analysis');
+    AppState.autoAnalysisTriggered = true;
+    startAnalysis();
+  }
+}
+```
+
+## Updated handleFile()
+
+```js
+function handleFile(file) {
+  // Validate
+  if (!file || !file.type.startsWith('image/')) {
+    showToast('Please select an image file');
+    return;
+  }
+
+  console.log('[File] Handling:', file.name, file.type);
+
+  // Cancel any running analysis
+  if (AppState.currentAnalysis) {
+    AppState.currentAnalysis.abort();
+    AppState.currentAnalysis = null;
+  }
+
+  // Update state
+  AppState.imageUploaded = true;
+  AppState.autoAnalysisTriggered = false;  // Reset for new image
+
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('imagePreview');
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+    
+    // Store for analysis
+    currentImageData = e.target.result;
+    
+    // Hide upload area, show preview area
+    hideUploadArea();
+    showPreviewArea();
+    
+    // Update button and check auto-trigger
+    updateAnalyzeButton();
+    checkAutoAnalysisTrigger();
+  };
+  reader.readAsDataURL(file);
+}
+```
+
+## Updated updateAnalyzeButton()
+
+```js
+function updateAnalyzeButton() {
+  const btn = document.getElementById('analyzeBtn');
+  const btnText = btn.querySelector('.analyze-btn-text');
+
+  // Don't update during analysis
+  if (AppState.current === 'ANALYZING') {
+    return;
+  }
+
+  if (!AppState.imageUploaded) {
+    btn.disabled = true;
+    btnText.textContent = 'Upload an image';
+  } else if (!AppState.modelsReady) {
+    btn.disabled = true;
+    const status = backgroundLoader.getStatus();
+    btnText.textContent = `Loading models... ${status.loadedCount}/${status.totalCount}`;
+  } else {
+    btn.disabled = false;
+    btnText.textContent = 'Analyze Image';
+  }
+}
+```
+
+## Updated startAnalysis()
+
+```js
+async function startAnalysis() {
+  if (!AppState.imageUploaded || !AppState.modelsReady) {
+    console.log('[Analysis] Cannot start - not ready');
+    return;
+  }
+
+  console.log('[Analysis] Starting...');
+  AppState.current = 'ANALYZING';
+
+  // Setup inference engine with loaded models
+  if (!inferenceEngine) {
+    inferenceEngine = new InferenceEngine(backgroundLoader.getLoadedModels());
+  }
+
+  // Store for cancellation
+  AppState.currentAnalysis = inferenceEngine;
+
+  // Start button progress
+  startButtonProgress();
+
+  try {
+    const results = await inferenceEngine.analyze(currentImageData, (progress) => {
+      updateButtonProgress(progress.modelId, progress.current, progress.total);
+    });
+
+    console.log('[Analysis] Complete:', results);
+    displayResults(results);
+    AppState.current = 'RESULTS';
+
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('[Analysis] Cancelled');
+    } else {
+      console.error('[Analysis] Error:', error);
+      showToast('Analysis failed. Please try again.');
+    }
+    AppState.current = 'READY';
+
+  } finally {
+    AppState.currentAnalysis = null;
+    endButtonProgress();
+    updateAnalyzeButton();
+  }
+}
+```
+
+## Setup Functions
+
+```js
+function setupRemoveButton() {
+  const removeBtn = document.getElementById('removeBtn');
+  if (!removeBtn) return;
+
+  removeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    handleRemove();
+  }, { capture: true });
+}
+
+function setupAnalyzeButton() {
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  if (!analyzeBtn) return;
+
+  analyzeBtn.addEventListener('click', () => {
+    if (!analyzeBtn.disabled) {
+      startAnalysis();
+    }
+  });
+}
+
+function setupFileInput() {
+  const fileInput = document.getElementById('fileInput');
+  if (!fileInput) return;
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (file) handleFile(file);
+  });
+}
+
+function setupDragDrop() {
+  const dropZone = document.getElementById('dropZone');
+  if (!dropZone) return;
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('dragover');
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  });
+}
+```
+
+## Flow Diagram
+
+```
+PAGE LOAD
+    │
+    ▼
+┌─────────────────┐
+│  INTRO (5s)     │ ← introAnimation.show()
+│  + bg loading   │ ← backgroundLoader.startLoading()
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│     READY       │ ← User can now interact
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+[Upload]   [Paste]
+    │         │
+    └────┬────┘
+         │
+         ▼
+┌─────────────────┐
+│ Image Uploaded  │
+└────────┬────────┘
+         │
+    ┌────┴────────────┐
+    │                 │
+    ▼                 ▼
+[Models Ready?]   [Models Loading?]
+    │                 │
+    ▼                 ▼
+AUTO-START        WAIT → then AUTO-START
+    │                 │
+    └────────┬────────┘
+             │
+             ▼
+    ┌─────────────────┐
+    │   ANALYZING     │ ← Button shows progress
+    └────────┬────────┘
+             │
+        ┌────┴────┐
+        ▼         ▼
+    [Success]  [Cancel/Error]
+        │         │
+        ▼         ▼
+    ┌───────┐  ┌───────┐
+    │RESULTS│  │ READY │
+    └───────┘  └───────┘
+```
+
+## Final Checklist
+
+- [ ] Intro shows on page load
+- [ ] Models load in background during intro
+- [ ] Intro auto-hides after 5s
+- [ ] Paste (Ctrl+V) works
+- [ ] Drag and drop works
+- [ ] File select works
+- [ ] Remove button only removes (no file browser)
+- [ ] Remove cancels running analysis
+- [ ] Auto-analysis triggers when image + models ready
+- [ ] Button shows progress during analysis
+- [ ] Friendly model names displayed
+- [ ] Mobile runs without crash
+- [ ] Back button works on mobile
+- [ ] Multiple analyses work in sequence
+
+## Start the app
+
+```js
+// At bottom of script or in DOMContentLoaded
+document.addEventListener('DOMContentLoaded', init);
+// Or if scripts are at bottom:
+init();
+```

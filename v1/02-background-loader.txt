@@ -1,0 +1,162 @@
+# Phase 2: BackgroundModelLoader
+
+## Time: 2 hours
+
+## File: js/BackgroundModelLoader.js (NEW FILE)
+
+## Purpose
+
+Preload detection models in background on page load, instead of lazy-loading when user uploads image.
+
+## Requirements
+
+- Export class `BackgroundModelLoader`
+- Constructor takes model configs array
+- Loads 2 models concurrently (not 4 - smoother UX)
+- Event-driven progress updates
+- Tracks state of each model
+
+## Implementation
+
+```js
+class BackgroundModelLoader extends EventTarget {
+  #models = { 
+    loaded: [],    // Successfully loaded
+    loading: [],   // Currently loading
+    pending: [],   // Waiting to load
+    failed: []     // Failed to load
+  };
+  #maxConcurrent = 2;
+  #modelInstances = new Map();  // modelName -> loaded instance
+
+  constructor(modelConfigs) {
+    super();
+    this.configs = modelConfigs;
+    this.#models.pending = [...modelConfigs];
+  }
+
+  async startLoading() {
+    this.#loadNext();
+  }
+
+  async #loadNext() {
+    // Fill up to maxConcurrent slots
+    while (
+      this.#models.loading.length < this.#maxConcurrent && 
+      this.#models.pending.length > 0
+    ) {
+      const config = this.#models.pending.shift();
+      this.#models.loading.push(config);
+      this.#loadModel(config);
+    }
+  }
+
+  async #loadModel(config) {
+    try {
+      console.log(`[BackgroundLoader] Loading ${config.name}...`);
+      
+      // TODO: Replace with actual model loading logic from existing code
+      const model = await this.#actualLoadModel(config);
+      
+      // Move from loading to loaded
+      this.#models.loading = this.#models.loading.filter(c => c.name !== config.name);
+      this.#models.loaded.push(config);
+      this.#modelInstances.set(config.name, model);
+      
+      // Emit progress
+      this.dispatchEvent(new CustomEvent('progress', {
+        detail: {
+          loaded: this.#models.loaded.length,
+          total: this.configs.length,
+          modelName: config.name
+        }
+      }));
+      
+      this.dispatchEvent(new CustomEvent('modelLoaded', {
+        detail: { modelName: config.name, model }
+      }));
+      
+      // Check if all done
+      if (this.#models.pending.length === 0 && this.#models.loading.length === 0) {
+        this.dispatchEvent(new CustomEvent('allLoaded'));
+      } else {
+        // Load next
+        this.#loadNext();
+      }
+      
+    } catch (error) {
+      console.error(`[BackgroundLoader] Failed to load ${config.name}:`, error);
+      
+      this.#models.loading = this.#models.loading.filter(c => c.name !== config.name);
+      this.#models.failed.push({ config, error });
+      
+      this.dispatchEvent(new CustomEvent('error', {
+        detail: { modelName: config.name, error }
+      }));
+      
+      // Continue with next model
+      this.#loadNext();
+    }
+  }
+
+  async #actualLoadModel(config) {
+    // TODO: Copy the actual model loading logic from InferenceEngine.js
+    // This might look something like:
+    // return await ort.InferenceSession.create(config.path, { executionProviders: ['webgpu'] });
+    throw new Error('Implement actual model loading');
+  }
+
+  getStatus() {
+    return {
+      ready: this.#models.pending.length === 0 && this.#models.loading.length === 0,
+      loadedCount: this.#models.loaded.length,
+      totalCount: this.configs.length,
+      failedCount: this.#models.failed.length
+    };
+  }
+
+  getLoadedModels() {
+    return this.#modelInstances;
+  }
+
+  isModelReady(modelName) {
+    return this.#modelInstances.has(modelName);
+  }
+}
+
+export { BackgroundModelLoader };
+```
+
+## Integration Point
+
+Look at existing InferenceEngine.js to find:
+1. How models are currently loaded
+2. Model config format (path, name, options)
+3. What the loaded model instance looks like
+
+Copy that loading logic into `#actualLoadModel()`.
+
+## Events Emitted
+
+| Event | Detail | When |
+|-------|--------|------|
+| `progress` | `{ loaded, total, modelName }` | Each model completes |
+| `modelLoaded` | `{ modelName, model }` | Model ready to use |
+| `allLoaded` | none | All models ready |
+| `error` | `{ modelName, error }` | Model failed |
+
+## Verify
+
+```js
+const loader = new BackgroundModelLoader(MODEL_CONFIGS);
+loader.addEventListener('progress', e => console.log(e.detail));
+loader.addEventListener('allLoaded', () => console.log('Ready!'));
+loader.startLoading();
+```
+
+## Done when
+
+- All 4 models load in background
+- Progress events fire correctly
+- Failed models don't break others
+- getLoadedModels() returns usable instances

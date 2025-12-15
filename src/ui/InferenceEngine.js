@@ -12,6 +12,53 @@
  * @module InferenceEngine
  */
 
+// Inline concurrency limiter (replaces p-limit for browser compatibility)
+function createPLimit(concurrency) {
+  const queue = [];
+  let activeCount = 0;
+
+  const next = () => {
+    activeCount--;
+    if (queue.length > 0) {
+      queue.shift()();
+    }
+  };
+
+  const run = async (fn) => {
+    return new Promise((resolve, reject) => {
+      const execute = async () => {
+        activeCount++;
+        try {
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        } finally {
+          next();
+        }
+      };
+
+      if (activeCount < concurrency) {
+        execute();
+      } else {
+        queue.push(execute);
+      }
+    });
+  };
+
+  return run;
+}
+
+// Model priority order (fastest first for immediate UX feedback)
+const MODEL_PRIORITY = [
+  'ateeqq',        // ~32ms (Q4)
+  'hamzenium',     // ~39ms (Q4)
+  'dima806_ai_real', // ~46ms
+  'prithiv_v2',    // ~56ms
+  'sdxl_detector', // ~47ms (but Swin = variable)
+  'smogy'          // ~83ms - slowest
+];
+
 /**
  * @typedef {Object} ModelResult
  * @property {string} modelId - Model identifier
@@ -43,6 +90,7 @@
  * @property {Function} [onModelStart] - Callback when model starts
  * @property {Function} [onModelComplete] - Callback when model completes
  * @property {Function} [onProgress] - Progress callback
+ * @property {Function} [onPartialVerdict] - Callback for preliminary verdict (2+ models agree)
  * @property {AbortSignal} [abortSignal] - Abort controller signal
  */
 
@@ -239,29 +287,79 @@ export async function runInference(imageSource, modelIds, options = {}) {
 }
 
 /**
+ * Calculate preliminary verdict from partial results
+ * Shows early verdict if 2+ models agree with >75% confidence
+ *
+ * IMPORTANT: Handle "Split Vote" edge case
+ * If 2 say "Real" and 1 says "Fake", do NOT show preliminary - wait for heavy models
+ */
+function calculatePartialVerdict(completedResults) {
+  const validResults = completedResults.filter(r => r?.success && r?.aiProbability != null);
+  if (validResults.length < 2) return null; // Need at least 2 models
+
+  const aiVotes = validResults.filter(r => r.aiProbability > 65).length;
+  const realVotes = validResults.filter(r => r.aiProbability < 35).length;
+  const unsureVotes = validResults.length - aiVotes - realVotes;
+  const avgConfidence = validResults.reduce((sum, r) => sum + r.confidence, 0) / validResults.length;
+
+  // CRITICAL: Only show preliminary if UNANIMOUS agreement
+  // Split votes (e.g., 2 Real + 1 AI) should NOT show preliminary
+  const isUnanimous = (aiVotes === validResults.length) || (realVotes === validResults.length);
+
+  if (!isUnanimous) {
+    return null; // Split vote - wait for more models
+  }
+
+  // Only show early verdict if strong confidence AND unanimous
+  if (avgConfidence > 75) {
+    return {
+      preliminary: true,
+      verdict: aiVotes > 0 ? 'LIKELY_AI' : 'LIKELY_REAL',
+      confidence: Math.round(avgConfidence),
+      modelsComplete: validResults.length,
+      modelsTotal: 6,
+      message: `Preliminary result based on ${validResults.length}/6 models`
+    };
+  }
+  return null;
+}
+
+/**
  * Run models in parallel with concurrency limit
  * @private
  */
 async function runModelsParallel(imageSource, modelIds, opts, signal) {
+  // Sort by priority (fastest first)
+  const sortedIds = [...modelIds].sort((a, b) => {
+    const aIndex = MODEL_PRIORITY.indexOf(a);
+    const bIndex = MODEL_PRIORITY.indexOf(b);
+
+    // Models not in priority list go to end
+    if (aIndex === -1 && bIndex === -1) return 0;
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+
+    return aIndex - bIndex;
+  });
+
   const results = [];
-  const executing = new Set();
+  const limit = createPLimit(opts.maxConcurrency);
 
-  for (const modelId of modelIds) {
-    // Check abort signal
-    if (signal.aborted) {
-      throw new Error('Inference aborted');
-    }
+  // Create promises for all models with concurrency control
+  const promises = sortedIds.map((modelId) =>
+    limit(async () => {
+      // Check abort signal
+      if (signal.aborted) {
+        throw new Error('Inference aborted');
+      }
 
-    // Wait if at concurrency limit
-    while (executing.size >= opts.maxConcurrency) {
-      await Promise.race(executing);
-    }
+      if (opts.onModelStart) {
+        opts.onModelStart(modelId);
+      }
 
-    // Start model inference
-    const promise = runSingleModelWithTimeout(imageSource, modelId, opts, signal)
-      .then(result => {
+      try {
+        const result = await runSingleModelWithTimeout(imageSource, modelId, opts, signal);
         results.push(result);
-        executing.delete(promise);
 
         // Update progress
         if (engineState.currentInference) {
@@ -281,10 +379,14 @@ async function runModelsParallel(imageSource, modelIds, opts, signal) {
           });
         }
 
+        // Check for early/partial verdict
+        if (opts.onPartialVerdict) {
+          const partial = calculatePartialVerdict(results);
+          if (partial) opts.onPartialVerdict(partial);
+        }
+
         return result;
-      })
-      .catch(error => {
-        executing.delete(promise);
+      } catch (error) {
         const errorResult = {
           modelId,
           success: false,
@@ -301,17 +403,12 @@ async function runModelsParallel(imageSource, modelIds, opts, signal) {
         }
 
         return errorResult;
-      });
-
-    executing.add(promise);
-
-    if (opts.onModelStart) {
-      opts.onModelStart(modelId);
-    }
-  }
+      }
+    })
+  );
 
   // Wait for all to complete
-  await Promise.all(executing);
+  await Promise.all(promises);
 
   return results;
 }
@@ -353,6 +450,12 @@ async function runModelsSequential(imageSource, modelIds, opts, signal) {
           percent: Math.round((completed / total) * 100)
         });
       }
+
+      // Check for early/partial verdict
+      if (opts.onPartialVerdict) {
+        const partial = calculatePartialVerdict(results);
+        if (partial) opts.onPartialVerdict(partial);
+      }
     } catch (error) {
       const errorResult = {
         modelId,
@@ -380,7 +483,7 @@ async function runModelsSequential(imageSource, modelIds, opts, signal) {
  */
 async function runSingleModelWithTimeout(imageSource, modelId, opts, signal) {
   return Promise.race([
-    runSingleModel(imageSource, modelId, signal),
+    runSingleModel(imageSource, modelId, opts, signal),
     createTimeout(opts.timeout, modelId)
   ]);
 }
@@ -410,7 +513,7 @@ function createTimeout(ms, modelId) {
  */
 const loadedModelModules = new Map();
 
-export async function runSingleModel(imageSource, modelId, signal = null) {
+export async function runSingleModel(imageSource, modelId, opts = {}, signal = null) {
   const startTime = performance.now();
 
   console.log(`[InferenceEngine] 🚀 Starting inference for model: ${modelId}`);
@@ -448,9 +551,18 @@ export async function runSingleModel(imageSource, modelId, signal = null) {
       console.log(`[InferenceEngine]   ⚡ Model not loaded, loading with device: ${device}`);
       console.log(`[InferenceEngine]   📥 Calling modelModule.load({ device: "${device}" })...`);
 
-      await modelModule.load({
+      // Get useRemote from global opts if available (defaults to undefined, letting model choose)
+      const loadOptions = {
         device: device
-      });
+      };
+
+      // Pass useRemote option if explicitly set
+      if (opts && opts.useRemote !== undefined) {
+        loadOptions.useRemote = opts.useRemote;
+        console.log(`[InferenceEngine]   🌐 useRemote: ${opts.useRemote}`);
+      }
+
+      await modelModule.load(loadOptions);
 
       console.log(`[InferenceEngine]   ✓ Model loaded successfully`);
       console.log(`[InferenceEngine]     - isLoaded() now returns:`, modelModule.isLoaded());
@@ -496,6 +608,13 @@ export async function runSingleModel(imageSource, modelId, signal = null) {
       }
     };
   } catch (error) {
+    console.error(`[InferenceEngine] ❌ Model ${modelId} failed:`, error);
+    console.error(`[InferenceEngine]   Error name: ${error.name}`);
+    console.error(`[InferenceEngine]   Error message: ${error.message}`);
+    if (error.stack) {
+      console.error(`[InferenceEngine]   Stack trace:`, error.stack);
+    }
+
     const time = performance.now() - startTime;
     return {
       modelId,

@@ -16,7 +16,7 @@
 
 // STABLE VERSIONING: Only bump when breaking changes require cache invalidation
 // Models use IndexedDB (onnx-init.js) so they persist across SW updates
-const CACHE_VERSION = 'v2.2.0';  // 2006 Purist UI redesign - depth, Aqua buttons, mobile
+const CACHE_VERSION = 'v2.3.0';  // Transformers.js 3.8.1 + 3 new models (sdxl_detector, ateeqq, hamzenium)
 const CACHE_NAME = `deepfake-detector-${CACHE_VERSION}`;
 const MODEL_CACHE_NAME = `deepfake-detector-models-${CACHE_VERSION}`;
 const RUNTIME_CACHE_NAME = `deepfake-detector-runtime-${CACHE_VERSION}`;
@@ -26,10 +26,12 @@ const RUNTIME_CACHE_NAME = `deepfake-detector-runtime-${CACHE_VERSION}`;
  * These are cached in IndexedDB by onnx-init.js, not the SW Cache API
  */
 const MODEL_URLS = [
+  '/models/ateeqq/model.onnx',
   '/models/dima806_ai_real/onnx/model.onnx',
-  '/models/smogy/onnx/model.onnx',
-  '/models/umm_maybe/onnx/model.onnx',
-  '/models/prithiv_v2/onnx/model.onnx'
+  '/models/hamzenium/model.onnx',
+  '/models/prithiv_v2/onnx/model.onnx',
+  '/models/sdxl_detector/model.onnx',
+  '/models/smogy/onnx/model.onnx'
 ];
 
 /**

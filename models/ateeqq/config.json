@@ -1,0 +1,29 @@
+{
+  "_name_or_path": "Ateeqq/ai-vs-human-image-detector",
+  "architectures": [
+    "SiglipForImageClassification"
+  ],
+  "id2label": {
+    "0": "ai",
+    "1": "hum"
+  },
+  "initializer_factor": 1.0,
+  "label2id": {
+    "ai": 0,
+    "hum": 1
+  },
+  "model_type": "siglip",
+  "problem_type": "single_label_classification",
+  "text_config": {
+    "model_type": "siglip_text_model",
+    "projection_size": 768,
+    "torch_dtype": "float32",
+    "vocab_size": 256000
+  },
+  "torch_dtype": "float32",
+  "transformers_version": "4.49.0",
+  "vision_config": {
+    "model_type": "siglip_vision_model",
+    "torch_dtype": "float32"
+  }
+}

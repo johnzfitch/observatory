@@ -10,7 +10,25 @@ node_modules/
 test-results/
 playwright-report/
 
-# Logs
+# Logs and debug files
 *.log
+debug-*.mjs
+debug-*.js
+debug-*.json
+debug-*.html
+diagnose-*.html
+verify-*.mjs
+run-*.mjs
+local-test-server.mjs
+webgpu-debugger.html
+test-*.html
+
+# Documentation (except DEPLOYMENT.md)
 docs/
 *.md
+!DEPLOYMENT.md
+
+# Test data
+test-images/
+test/2/
+transformers.js/

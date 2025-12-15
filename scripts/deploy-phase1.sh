@@ -22,7 +22,7 @@ echo ""
 # Configuration
 # ----------------------------------------
 
-PROJECT_DIR="${PROJECT_DIR:-/home/zack/dev/deepfake-detector/web-gpu}"
+PROJECT_DIR="${PROJECT_DIR:-/home/zack/dev/observatory}"
 REMOTE_HOST="${REMOTE_HOST:-adept}"
 REMOTE_PATH="${REMOTE_PATH:-/var/www/definitelynot.ai/look}"
 
@@ -71,12 +71,22 @@ echo -e "${YELLOW}📤 Deploying to $REMOTE_HOST:$REMOTE_PATH...${NC}"
 cd "$PROJECT_DIR"
 
 # Rsync with progress
-rsync -avz --progress \
+# Note: Using --no-perms --no-owner --no-group because files are owned by caddy
+# Permissions are fixed afterwards with sudo chown/chmod
+rsync -rltvz --progress \
+    --no-perms --no-owner --no-group \
     --exclude='node_modules' \
     --exclude='.git' \
     --exclude='*.log' \
     --exclude='.DS_Store' \
     --exclude='__pycache__' \
+    --exclude='test-results' \
+    --exclude='playwright-report' \
+    --exclude='screenshots' \
+    --exclude='tests' \
+    --exclude='archived' \
+    --exclude='archive' \
+    --exclude='*.md' \
     . "$REMOTE_HOST:$REMOTE_PATH/"
 
 echo ""

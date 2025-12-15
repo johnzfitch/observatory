@@ -47,7 +47,7 @@ export async function load(options = {}) {
 
   try {
     console.log(`[${MODEL_ID}]   [LOAD] Importing transformers.js from CDN`);
-    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.2');
+    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1');
     console.log(`[${MODEL_ID}]   [OK] Transformers.js imported successfully`);
     console.log(`[${MODEL_ID}]     - pipeline function available:`, !!pipeline);
     console.log(`[${MODEL_ID}]     - env object available:`, !!env);

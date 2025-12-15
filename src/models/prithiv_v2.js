@@ -40,7 +40,7 @@ export async function load(options = {}) {
 
   isLoading = true;
   try {
-    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.2');
+    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1');
 
     // Configure Transformers.js for local model loading
     configureTransformersEnv(env);

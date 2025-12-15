@@ -1,11 +1,11 @@
 /**
- * umm_maybe - AI Image Detector (ViT)
- * HuggingFace: umm-maybe/AI-image-detector
- * Accuracy: 94.2% (Precision: 0.938, Recall: 0.978)
+ * hamzenium - ViT Deepfake Classifier
+ * HuggingFace: Hamzenium/ViT-Deepfake-Classifier
+ * Accuracy: 96.56%
  *
- * Note: Designed for artistic images, NOT deepfake photos. Pre-MJ5/SDXL training.
- * Training data from October 2022 excludes Midjourney 5, SDXL, and DALLE-3.
- * Optimized for detecting AI-generated art (VQGAN+CLIP, older models).
+ * Vision Transformer (ViT) fine-tuned on OpenForensics dataset.
+ * Designed for real vs fake (deepfake) detection.
+ * Trained on 16,000 images with 96.56% test accuracy.
  */
 
 import { configureTransformersEnv } from '../config/paths.js';
@@ -13,10 +13,10 @@ import { configureTransformersEnv } from '../config/paths.js';
 let classifier = null;
 let isLoading = false;
 
-export const MODEL_ID = 'umm_maybe';
-export const HF_MODEL = 'umm-maybe/AI-image-detector';
-export const DISPLAY_NAME = 'Umm-Maybe AI Detector';
-export const ACCURACY = '94.2%';
+export const MODEL_ID = 'hamzenium';
+export const HF_MODEL = 'Hamzenium/ViT-Deepfake-Classifier';
+export const DISPLAY_NAME = 'Hamzenium ViT Deepfake';
+export const ACCURACY = '96.56%';
 
 /**
  * Load the model from local ONNX or HuggingFace
@@ -36,7 +36,7 @@ export async function load(options = {}) {
 
   isLoading = true;
   try {
-    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.2');
+    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1');
 
     // Configure Transformers.js for local model loading
     configureTransformersEnv(env);
@@ -78,22 +78,35 @@ export async function predict(imageSource) {
   const results = await classifier(processedImage);
 
   // Map results to standard format
-  // Labels from Python code: "artificial", "ai", "fake" vs "human", "real"
-  // The model.config.id2label should match these patterns
+  // Labels: 0="real", 1="fake"
+  // Look for "fake", "deepfake" vs "real", "realism"
   let aiProbability = 0;
   let detectedLabel = null;
 
   for (const r of results) {
     const label = r.label.toLowerCase();
-    if (label.includes('artificial') || label.includes('ai') || label.includes('fake') || label.includes('generated')) {
+    if (label.includes('fake') || label.includes('deepfake') || label.includes('ai') || label.includes('artificial')) {
       aiProbability = r.score;
       detectedLabel = r.label;
       break;
     }
-    if (label.includes('human') || label.includes('real') || label.includes('authentic')) {
+    if (label.includes('real') || label.includes('realism') || label.includes('human')) {
       aiProbability = 1 - r.score;
       detectedLabel = r.label;
       break;
+    }
+  }
+
+  // Fallback: if labels are numeric like "0"/"1"
+  // Based on config.json: 0=real, 1=fake
+  if (aiProbability === 0 && results.length >= 2) {
+    const firstLabel = results[0].label.toLowerCase();
+    if (firstLabel === '0' || firstLabel === 'real') {
+      aiProbability = 1 - results[0].score;
+      detectedLabel = results[0].label;
+    } else if (firstLabel === '1' || firstLabel === 'fake') {
+      aiProbability = results[0].score;
+      detectedLabel = results[0].label;
     }
   }
 
@@ -108,10 +121,7 @@ export async function predict(imageSource) {
     verdict: aiProbability >= 0.5 ? 'AI' : 'REAL',
     confidence: Math.round(confidence * 1000) / 10, // Percentage with 1 decimal
     detectedLabel,
-    rawResults: results,
-
-    // Warning about scope and limitations
-    warning: 'Optimized for artistic images. Not designed for deepfake photo detection. Pre-MJ5/SDXL training data.'
+    rawResults: results
   };
 }
 
@@ -140,19 +150,36 @@ export function getInfo() {
     displayName: DISPLAY_NAME,
     hfModel: HF_MODEL,
     accuracy: ACCURACY,
-    architecture: 'ViT (Vision Transformer)',
-    precision: '0.938',
-    recall: '0.978',
+    architecture: 'ViT (google/vit-base-patch16-224-in21k)',
     inputSize: 224,
-    category: 'digital_art',
-    trainingDate: 'October 2022',
+    parameterCount: '85.8M',
+    trainingDataset: 'OpenForensics (16,000 training, 2,000 validation, 2,000 test)',
+    performance: {
+      validationAccuracy: '96.22%',
+      testAccuracy: '96.56%',
+      f1: '96.22%',
+      precision: '96.30%',
+      recall: '96.22%'
+    },
+    trainingDetails: {
+      batchSize: 24,
+      epochs: 10,
+      learningRate: '3e-5',
+      optimizer: 'AdamW',
+      duration: '~14 minutes (Tesla T4)'
+    },
+    strengths: [
+      'High accuracy and precision',
+      'Balanced precision/recall',
+      'MIT license (fully open)',
+      'Trained on OpenForensics dataset'
+    ],
     limitations: [
-      'Intended scope: artistic images only',
-      'NOT a deepfake photo detector',
-      'Training excludes Midjourney 5, SDXL, DALLE-3',
-      'General computer imagery (webcams, screenshots) may confuse it',
-      'Trained on older models (VQGAN+CLIP era)',
-      'Images scoring 90%+ should be reviewed by human expert'
+      'Dataset bias - limited to OpenForensics',
+      'May not detect all deepfake techniques',
+      'Performance degrades on unseen manipulation methods',
+      'Not tested against adversarial attacks',
+      'Requires human oversight for high-stakes decisions'
     ]
   };
 }

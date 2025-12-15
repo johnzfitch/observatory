@@ -29,10 +29,6 @@ export function getModelsBasePath() {
 export function configureTransformersEnv(env) {
   console.log('[paths.js] [CONFIG] Configuring Transformers.js environment...');
 
-  // Enable local model loading
-  env.allowLocalModels = true;
-  console.log('[paths.js]   [OK] allowLocalModels = true');
-
   // Use browser cache for downloaded models
   env.useBrowserCache = true;
   console.log('[paths.js]   [OK] useBrowserCache = true');
@@ -41,10 +37,13 @@ export function configureTransformersEnv(env) {
   env.localModelPath = getModelsBasePath();
   console.log('[paths.js]   [OK] localModelPath =', env.localModelPath);
 
-  // Disable remote model fetching - we have local ONNX files
-  // Prevents HuggingFace fallback which causes 404 errors for our models
-  env.allowRemoteModels = false;
-  console.log('[paths.js]   [OK] allowRemoteModels = false');
+  // Enable remote model fetching - allows HuggingFace CDN fallback
+  // Changed: Enable HuggingFace CDN to reduce bandwidth on adept server
+  env.allowRemoteModels = true;
+  console.log('[paths.js]   [OK] allowRemoteModels = true');
+
+  // Keep local models as fallback
+  env.allowLocalModels = true;
 
   // NOTE: We do NOT configure WASM paths - let transformers.js use its bundled ONNX Runtime
   // The transformers.js library has ONNX Runtime compiled in, and overriding wasmPaths
@@ -71,14 +70,15 @@ export function configureTransformersEnv(env) {
  * Each model ID maps to its folder name under /models/
  */
 export const MODEL_PATHS = {
-  // Art Detectors (Transformers.js pipeline)
-  dima806_ai_real: 'dima806_ai_real',
-  smogy: 'smogy',
-  haywood: 'haywood',
-  umm_maybe: 'umm_maybe',
-  prithiv_v2: 'prithiv_v2',
-  yaya_detector: 'yaya_detector',
+  // Art Detectors (Transformers.js 3.8.1 pipeline)
   ateeqq: 'ateeqq',
+  dima806_ai_real: 'dima806_ai_real',
+  hamzenium: 'hamzenium',
+  haywood: 'haywood',
+  prithiv_v2: 'prithiv_v2',
+  sdxl_detector: 'sdxl_detector',
+  smogy: 'smogy',
+  yaya_detector: 'yaya_detector',
 
   // Photo Detectors (raw ONNX)
   cnn_detection: 'cnn_detection',

@@ -1,11 +1,11 @@
 /**
- * smogy - SMOGY AI Images Detector (Swin Transformer)
- * HuggingFace: Smogy/SMOGY-Ai-images-detector
- * ONNX Version: amrita-detectly/detect-ai-image-v1
- * Accuracy: 98.2%
+ * sdxl_detector - SDXL Image Detector (Swin Transformer)
+ * HuggingFace: Organika/sdxl-detector
+ * Accuracy: 98.13%
  *
- * Swin Transformer fine-tuned for 2024 AI image detection.
- * Improved performance on newer generative models (DALL-E, Imagen, etc.)
+ * Swin Transformer fine-tuned from umm-maybe AI art detector.
+ * Optimized for SDXL-generated images and non-artistic imagery.
+ * NOTE: Performance degrades on non-SDXL diffusion models (Midjourney, older Stable Diffusion).
  */
 
 import { configureTransformersEnv } from '../config/paths.js';
@@ -13,11 +13,10 @@ import { configureTransformersEnv } from '../config/paths.js';
 let classifier = null;
 let isLoading = false;
 
-export const MODEL_ID = 'smogy';
-export const HF_MODEL = 'Smogy/SMOGY-Ai-images-detector';
-export const HF_MODEL_ONNX = 'amrita-detectly/detect-ai-image-v1';
-export const DISPLAY_NAME = 'SMOGY AI Detector';
-export const ACCURACY = '98.2%';
+export const MODEL_ID = 'sdxl_detector';
+export const HF_MODEL = 'Organika/sdxl-detector';
+export const DISPLAY_NAME = 'SDXL Detector';
+export const ACCURACY = '98.13%';
 
 /**
  * Load the model from local ONNX or HuggingFace
@@ -43,7 +42,7 @@ export async function load(options = {}) {
     configureTransformersEnv(env);
 
     // Model ID is just the folder name - Transformers.js prepends localModelPath
-    const modelPath = options.useRemote ? HF_MODEL_ONNX : MODEL_ID;
+    const modelPath = options.useRemote ? HF_MODEL : MODEL_ID;
 
     classifier = await pipeline('image-classification', modelPath, {
       device: options.device || 'webgpu',
@@ -79,7 +78,7 @@ export async function predict(imageSource) {
   const results = await classifier(processedImage);
 
   // Map results to standard format
-  // Labels: 0="artificial", 1="human" (note: reversed from typical!)
+  // Labels: 0="artificial", 1="human" (same as smogy/umm_maybe)
   // Look for "artificial", "ai", "fake" vs "human", "real"
   let aiProbability = 0;
   let detectedLabel = null;
@@ -122,7 +121,8 @@ export async function predict(imageSource) {
     verdict: aiProbability >= 0.5 ? 'AI' : 'REAL',
     confidence: Math.round(confidence * 1000) / 10, // Percentage with 1 decimal
     detectedLabel,
-    rawResults: results
+    rawResults: results,
+    warning: 'Optimized for SDXL-generated images. Performance may degrade on other diffusion models.'
   };
 }
 
@@ -150,22 +150,28 @@ export function getInfo() {
     modelId: MODEL_ID,
     displayName: DISPLAY_NAME,
     hfModel: HF_MODEL,
-    hfModelONNX: HF_MODEL_ONNX,
     accuracy: ACCURACY,
-    architecture: 'Swin Transformer (microsoft/swin-base-patch4-window7-224)',
+    architecture: 'Swin Transformer (fine-tuned from umm-maybe)',
     inputSize: 224,
     parameterCount: '86.8M',
-    trainingDataset: 'Fine-tuned from Organika/sdxl-detector',
+    trainingDataset: 'Wikimedia-SDXL image pairs',
     performance: {
-      overall: '98.18%',
-      dalle: '90.76%',
-      imagen: '75.63%'
+      accuracy: '98.13%',
+      f1: '97.33%',
+      precision: '99.45%',
+      recall: '95.29%',
+      auc: '99.80%'
     },
-    notes: [
-      'Fine-tuned for 2024 AI generation models',
-      'Improved performance on DALL-E, Imagen, and modern generators',
-      'ONNX quantized version available for faster inference',
-      'Non-commercial use only due to training data licensing'
+    strengths: [
+      'Optimized for SDXL-generated images',
+      'High precision (99.45%)',
+      'Excellent AUC (99.80%)',
+      'Non-artistic imagery focus'
+    ],
+    limitations: [
+      'Degrades on other diffusion models (Midjourney, SD v1)',
+      'Significantly underperforms on older models (VQGAN+CLIP)',
+      'Non-commercial use only (training data licensing)'
     ]
   };
 }

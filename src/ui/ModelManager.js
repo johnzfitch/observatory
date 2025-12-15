@@ -24,14 +24,16 @@
  */
 const MODEL_CATEGORIES = {
   // Full-image AI generation detection (diffusion models, GANs)
+  // Ordered by speed (fastest first) for progressive result display
   FULL_IMAGE_DETECTORS: [
-    // Diffusion model detectors (SD, MJ, DALL-E, Flux) - Tier 1: Available models
-    { id: 'dima806_ai_real', displayName: 'Dima806 AI vs Real', accuracy: '98.2%', estimatedMemory: 450, trainedOn: 'SD/MJ/DALL-E' },
-    { id: 'smogy', displayName: 'SMOGY AI Detector', accuracy: '98.2%', estimatedMemory: 480, trainedOn: 'SD/MJ/DALL-E' },
-    { id: 'umm_maybe', displayName: 'Umm-Maybe AI Detector', accuracy: '94.2%', estimatedMemory: 420, trainedOn: 'Pre-2022 generators' },
-    { id: 'prithiv_v2', displayName: 'Prithiv Deepfake v2', accuracy: '92.1%', estimatedMemory: 520, trainedOn: 'SD/MJ' }
-    // haywood removed - SwinV2 architecture not supported by transformers.js 3.1.2 with WebGPU
-    // ateeqq removed - SigLIP architecture not supported by transformers.js 3.1.2
+    // Tier 1: High-accuracy detectors (transformers.js 3.8.1)
+    { id: 'ateeqq', displayName: 'Ateeqq AI vs Human', accuracy: '99.23%', estimatedMemory: 500, trainedOn: 'MJ6.1/Flux1.1/SD3.5/GPT-4o' },      // ~32ms - fastest
+    { id: 'hamzenium', displayName: 'Hamzenium ViT Deepfake', accuracy: '96.56%', estimatedMemory: 450, trainedOn: 'OpenForensics' },   // ~39ms
+    { id: 'dima806_ai_real', displayName: 'Dima806 AI vs Real', accuracy: '98.2%', estimatedMemory: 450, trainedOn: 'SD/MJ/DALL-E' }, // ~46ms
+    { id: 'sdxl_detector', displayName: 'SDXL Detector', accuracy: '98.13%', estimatedMemory: 460, trainedOn: 'SDXL' }, // ~47ms
+    { id: 'prithiv_v2', displayName: 'Prithiv Deepfake v2', accuracy: '92.1%', estimatedMemory: 520, trainedOn: 'SD/MJ' },  // ~56ms
+    { id: 'smogy', displayName: 'SMOGY AI Detector', accuracy: '98.2%', estimatedMemory: 480, trainedOn: 'SD/MJ/DALL-E' }   // ~83ms - slowest
+    // haywood removed - SwinV2 architecture not supported by transformers.js 3.8.1 with WebGPU
 
     // Tier 2: Models without JS implementations (commented out to prevent service worker errors)
     // { id: 'cnn_detection', displayName: 'CNNDetection (ProGAN)', accuracy: '~94%', estimatedMemory: 350, backbone: 'ResNet50', trainedOn: 'ProGAN' },

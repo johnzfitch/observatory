@@ -12,11 +12,12 @@
   <!-- Security: Content Security Policy -->
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self';
-                 script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https://cdn.jsdelivr.net;
+                 script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net;
+                 script-src-elem 'self' 'unsafe-inline' blob: https://cdn.jsdelivr.net;
                  style-src 'self' 'unsafe-inline';
                  img-src 'self' blob: data:;
-                 worker-src 'self' blob:;
-                 connect-src 'self' blob: data: https://cdn.jsdelivr.net;">
+                 worker-src 'self' blob: https://cdn.jsdelivr.net;
+                 connect-src 'self' blob: data: https://cdn.jsdelivr.net https://huggingface.co;">
 
   <!-- Fonts (Local - No External CDN) -->
   <link rel="stylesheet" href="fonts/fonts.css">
@@ -113,7 +114,7 @@
         <div class="model-list-in-category" id="fullImageList"></div>
       </div>
 
-      <!-- Face Manipulation Detection -->
+      <!-- Face Manipulation Detection - DISABLED: No models available
       <div class="model-category" id="faceManipulationCategory">
         <div class="model-category-header">
           <div>
@@ -128,6 +129,7 @@
         </div>
         <div class="model-list-in-category" id="faceManipulationList"></div>
       </div>
+      -->
     </div>
 
     <!-- Progress Bar Container for Analysis -->
@@ -1052,7 +1054,7 @@
   <!-- Service Worker Registration for Caching & Offline Support -->
   <script>
     // Register Service Worker for intelligent caching
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && !window.__SKIP_SW_REGISTRATION__) {
       window.addEventListener('load', async () => {
         try {
           const registration = await navigator.serviceWorker.register('/service-worker.js', {
@@ -1102,9 +1104,66 @@
         const { type, data } = event.data;
         console.log('[App] Message from SW:', type, data);
       });
-    } else {
+    } else if (!window.__SKIP_SW_REGISTRATION__) {
       console.warn('[App] Service Worker not supported');
+    } else {
+      console.log('[App] Service Worker registration skipped (cache clearing in progress)');
     }
+  </script>
+
+  <!-- Cache Busting: Force update on deployment -->
+  <script>
+    (function() {
+      const SITE_VERSION = '2.4.1'; // Must match service-worker.js CACHE_VERSION
+      const lastVersion = localStorage.getItem('siteVersion');
+
+      if (lastVersion && lastVersion !== SITE_VERSION) {
+        console.log('[CacheBust] Version changed from', lastVersion, 'to', SITE_VERSION, '- clearing cache');
+
+        // Prevent SW registration on this page load (flag checked below)
+        window.__SKIP_SW_REGISTRATION__ = true;
+
+        // Clear all caches
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => {
+              console.log('[CacheBust] Deleting cache:', name);
+              caches.delete(name);
+            });
+          });
+        }
+
+        // Unregister service workers and wait for completion
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(regs => {
+            Promise.all(regs.map(reg => {
+              console.log('[CacheBust] Unregistering SW');
+              return reg.unregister();
+            })).then(() => {
+              // Mark version and reload after SW unregistered
+              localStorage.setItem('siteVersion', SITE_VERSION);
+
+              // Reload once (prevent infinite reload)
+              if (!sessionStorage.getItem('cacheCleared')) {
+                sessionStorage.setItem('cacheCleared', 'true');
+                console.log('[CacheBust] Reloading page...');
+                window.location.reload(true);
+              }
+            });
+          });
+        } else {
+          // No SW support, just reload
+          localStorage.setItem('siteVersion', SITE_VERSION);
+          if (!sessionStorage.getItem('cacheCleared')) {
+            sessionStorage.setItem('cacheCleared', 'true');
+            window.location.reload(true);
+          }
+        }
+      } else {
+        // First visit or same version
+        localStorage.setItem('siteVersion', SITE_VERSION);
+      }
+    })();
   </script>
 </body>
 </html>

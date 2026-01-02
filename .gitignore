@@ -1,7 +1,25 @@
-# Large model files (should be downloaded at runtime, not committed)
+# Large model files (downloaded at runtime, not committed)
 models/**/*.onnx
+models/**/*.safetensors
+models/**/*.bin
+models/**/checkpoint-*/
 archived/models/**/*.onnx
 archive/models/**/*.onnx
+
+# Model training artifacts
+models/**/*.jpg
+models/**/trainer_state.json
+models/**/training_*.json
+models/**/training_*.bin
+models/**/.gitattributes
+models/**/main.py
+models/**/makefile
+models/**/requirements.txt
+
+# Credentials (NEVER commit)
+creds.txt
+*.pem
+*.key
 
 # Node modules
 node_modules/
@@ -9,6 +27,7 @@ node_modules/
 # Test results
 test-results/
 playwright-report/
+test/*/
 
 # Logs and debug files
 *.log
@@ -22,13 +41,17 @@ run-*.mjs
 local-test-server.mjs
 webgpu-debugger.html
 test-*.html
+test-*.mjs
+quick-test.mjs
 
-# Documentation (except DEPLOYMENT.md)
+# Documentation
 docs/
 *.md
-!DEPLOYMENT.md
 
 # Test data
 test-images/
-test/2/
 transformers.js/
+
+# Unrelated project folders
+pyghidra_mcp_projects/
+ensemble-engine-package/

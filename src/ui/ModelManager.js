@@ -11,49 +11,17 @@
  */
 
 /**
- * Model categories by ACTUAL CAPABILITY (not just naming)
- *
- * FULL_IMAGE_DETECTORS: Detect if entire image is AI-generated
- *   - Trained on: ProGAN, Stable Diffusion, Midjourney, DALL-E, Flux outputs
- *   - Use case: "Is this photo/image AI-generated?"
- *
- * FACE_MANIPULATION_DETECTORS: Detect face swaps/reenactment in real photos
- *   - Trained on: FaceForensics++, DFDC (real photos with fake faces)
- *   - Use case: "Is the face in this photo manipulated?"
- *   - Requires: Face detection, face-cropped input
+ * Active models for full-image AI generation detection
+ * Detects if entire image is AI-generated (SD, MJ, DALL-E, Flux, GANs)
  */
 const MODEL_CATEGORIES = {
-  // Full-image AI generation detection (diffusion models, GANs)
-  // Ordered by speed (fastest first) for progressive result display
   FULL_IMAGE_DETECTORS: [
-    // Core 4 models for production use
     { id: 'ateeqq', displayName: 'Ateeqq AI vs Human', accuracy: '99.23%', estimatedMemory: 500, trainedOn: 'MJ6.1/Flux1.1/SD3.5/GPT-4o' },
     { id: 'dima806_ai_real', displayName: 'Dima806 AI vs Real', accuracy: '98.2%', estimatedMemory: 450, trainedOn: 'SD/MJ/DALL-E' },
     { id: 'prithiv_v2', displayName: 'Prithiv Deepfake v2', accuracy: '92.1%', estimatedMemory: 520, trainedOn: 'SD/MJ' },
     { id: 'smogy', displayName: 'SMOGY AI Detector', accuracy: '98.2%', estimatedMemory: 480, trainedOn: 'SD/MJ/DALL-E' }
-    // Disabled models:
-    // { id: 'hamzenium', displayName: 'Hamzenium ViT Deepfake', accuracy: '96.56%', estimatedMemory: 450, trainedOn: 'OpenForensics' },
-    // { id: 'sdxl_detector', displayName: 'SDXL Detector', accuracy: '98.13%', estimatedMemory: 460, trainedOn: 'SDXL' },
-    // haywood removed - SwinV2 architecture not supported
-
-    // Tier 2: Models without JS implementations (commented out to prevent service worker errors)
-    // { id: 'cnn_detection', displayName: 'CNNDetection (ProGAN)', accuracy: '~94%', estimatedMemory: 350, backbone: 'ResNet50', trainedOn: 'ProGAN' },
-    // { id: 'trufor', displayName: 'TruFor (Forensics)', accuracy: '~94%', estimatedMemory: 400, trainedOn: 'Forensic artifacts' },
-    // { id: 'ucf', displayName: 'UCF (Cross-Generator)', accuracy: '~95%', estimatedMemory: 400, trainedOn: 'Cross-generator' },
-    // { id: 'npr', displayName: 'NPR (Neural Patterns)', accuracy: '~93%', estimatedMemory: 22, backbone: 'Custom ResNet', trainedOn: 'Neural residuals' }
   ],
-
-  // Face manipulation detection (deepfakes in real photos)
-  FACE_MANIPULATION_DETECTORS: [
-    // Tier 2: Models without JS implementations (commented out to prevent service worker errors)
-    // { id: 'mesonet', displayName: 'MesoNet (Face Mesoscopic)', accuracy: '~90%', estimatedMemory: 50, trainedOn: 'FaceForensics++', requiresFace: true },
-    // { id: 'xception', displayName: 'XceptionNet (FF++)', accuracy: '~96%', estimatedMemory: 400, trainedOn: 'FaceForensics++', requiresFace: true },
-    // { id: 'capsulenet', displayName: 'CapsuleNet (VGG16)', accuracy: '~92%', estimatedMemory: 550, trainedOn: 'FaceForensics++', requiresFace: true },
-    // { id: 'dspfwa', displayName: 'DSP-FWA (Face Warping)', accuracy: '87.4%', estimatedMemory: 300, backbone: 'ResNet34', trainedOn: 'Face warping artifacts', requiresFace: true },
-    // { id: 'va', displayName: 'Visual Artifacts (VA)', accuracy: '~90%', estimatedMemory: 150, isNonDL: true, trainedOn: 'Facial landmarks', requiresFace: true },
-    // { id: 'upconv', displayName: 'Upconv (MobileNetV2)', accuracy: '~88%', estimatedMemory: 100, trainedOn: 'Upsampling artifacts', requiresFace: true, note: 'Could also detect AI upscaler artifacts in full images' },
-    // { id: 'spsl', displayName: 'SPSL (Phase Spectrum)', accuracy: '~89%', estimatedMemory: 80, trainedOn: 'FaceForensics++', requiresFace: true }
-  ]
+  FACE_MANIPULATION_DETECTORS: []
 };
 
 /**

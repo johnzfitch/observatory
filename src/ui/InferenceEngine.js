@@ -51,12 +51,10 @@ function createPLimit(concurrency) {
 
 // Model priority order (fastest first for immediate UX feedback)
 const MODEL_PRIORITY = [
-  'ateeqq',        // ~32ms (Q4)
-  'hamzenium',     // ~39ms (Q4)
+  'ateeqq',          // ~32ms
   'dima806_ai_real', // ~46ms
-  'prithiv_v2',    // ~56ms
-  'sdxl_detector', // ~47ms (but Swin = variable)
-  'smogy'          // ~83ms - slowest
+  'prithiv_v2',      // ~56ms
+  'smogy'            // ~83ms
 ];
 
 /**

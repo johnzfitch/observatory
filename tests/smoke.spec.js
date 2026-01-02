@@ -122,13 +122,13 @@ test.describe('smoke - Model Registry', () => {
     expect(categoryCount).toBeGreaterThan(0);
   });
 
-  test('should have expected model categories (2 categories)', async ({ page }) => {
+  test('should have expected model categories (1 category)', async ({ page }) => {
     await loadApp(page);
     await waitForModels(page);
 
-    // Get category count (Full-Image AI Detection + Face Manipulation)
+    // Get category count (Full-Image AI Detection only, Face Manipulation disabled)
     const categoryCount = await page.locator('.model-category').count();
-    expect(categoryCount).toBe(2);
+    expect(categoryCount).toBe(1);
   });
 
   test('should display model category information', async ({ page }) => {

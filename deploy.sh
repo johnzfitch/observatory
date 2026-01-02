@@ -45,7 +45,8 @@ rsync -avz --delete \
   "${LOCAL_PATH}" "${SERVER}:${REMOTE_PATH}"
 
 # Fix permissions on server (Caddy runs as caddy user)
-ssh "${SERVER}" "sudo chown -R caddy:caddy ${REMOTE_PATH} && sudo chmod -R 755 ${REMOTE_PATH}"
+# Directories: 755 (rwxr-xr-x), Files: 644 (rw-r--r--)
+ssh "${SERVER}" "sudo chown -R caddy:caddy ${REMOTE_PATH} && sudo find ${REMOTE_PATH} -type d -exec chmod 755 {} \; && sudo find ${REMOTE_PATH} -type f -exec chmod 644 {} \;"
 
 echo ""
 echo -e "${GREEN}Deployment complete!${NC}"

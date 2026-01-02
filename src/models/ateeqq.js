@@ -8,6 +8,7 @@ import { createSession } from '../core/ort-runtime.js';
 import { preprocessImage, softmax, NORMALIZATION } from '../core/preprocessing.js';
 
 let session = null;
+let loadingPromise = null;
 
 export const MODEL_ID = 'ateeqq';
 export const HF_MODEL = 'Ateeqq/ai-vs-human-image-detector';
@@ -21,10 +22,14 @@ const MODEL_URL = '/models/ateeqq/onnx/model.onnx';
 
 export async function load(options = {}) {
   if (session) return session;
+  if (loadingPromise) return loadingPromise;
 
   console.log(`[${MODEL_ID}] Loading model from: ${MODEL_URL}`);
-  session = await createSession(MODEL_URL, options.onProgress);
-  return session;
+  loadingPromise = createSession(MODEL_URL, options.onProgress)
+    .then(s => { session = s; return s; })
+    .finally(() => { loadingPromise = null; });
+
+  return loadingPromise;
 }
 
 export async function predict(imageSource) {
@@ -55,7 +60,12 @@ export async function predict(imageSource) {
   };
 }
 
-export function unload() { session = null; }
+export function unload() {
+  if (session) {
+    session.release();
+    session = null;
+  }
+}
 export function isLoaded() { return session !== null; }
 
 export function getInfo() {

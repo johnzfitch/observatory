@@ -15,7 +15,7 @@ import { createSession } from '../core/ort-runtime.js';
 import { preprocessImage, softmax, NORMALIZATION } from '../core/preprocessing.js';
 
 let session = null;
-let lastLoadOptions = {};
+let loadingPromise = null;
 
 export const MODEL_ID = 'prithiv_v2';
 export const HF_MODEL = 'prithivMLmods/Deep-Fake-Detector-v2-Model';
@@ -40,14 +40,14 @@ const LABELS = {
  */
 export async function load(options = {}) {
   if (session) return session;
-
-  lastLoadOptions = options;
+  if (loadingPromise) return loadingPromise;
 
   console.log(`[${MODEL_ID}] Loading model from: ${MODEL_URL}`);
+  loadingPromise = createSession(MODEL_URL, options.onProgress)
+    .then(s => { session = s; return s; })
+    .finally(() => { loadingPromise = null; });
 
-  session = await createSession(MODEL_URL, options.onProgress);
-
-  return session;
+  return loadingPromise;
 }
 
 /**
@@ -56,7 +56,7 @@ export async function load(options = {}) {
  * @returns {Promise<Object>} Prediction results
  */
 export async function predict(imageSource) {
-  if (!session) await load(lastLoadOptions);
+  if (!session) await load();
 
   // Preprocess image with ImageNet normalization (standard for ViT models)
   const tensor = await preprocessImage(imageSource, {
@@ -94,7 +94,10 @@ export async function predict(imageSource) {
  * Unload the model from memory
  */
 export function unload() {
-  session = null;
+  if (session) {
+    session.release();
+    session = null;
+  }
 }
 
 /**

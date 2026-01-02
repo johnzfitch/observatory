@@ -10,36 +10,29 @@
  * Uses direct ONNX Runtime with shared preprocessing.
  */
 
-import { createSession, createTensor } from '../core/ort-runtime.js';
+import { createSession } from '../core/ort-runtime.js';
 import { preprocessImage, softmax, NORMALIZATION } from '../core/preprocessing.js';
 
 let session = null;
-let lastLoadOptions = {};
+let loadingPromise = null;
 
 export const MODEL_ID = 'dima806_ai_real';
 export const HF_MODEL = 'dima806/ai_vs_real_image_detection';
 export const DISPLAY_NAME = 'Dima806 AI vs Real';
 export const ACCURACY = '98.2%';
 
-/**
- * Load the model using ONNX Runtime directly
- * @param {Object} options - Loading options
- * @param {Function} options.onProgress - Progress callback
- * @param {boolean} options.useRemote - Use HuggingFace CDN (default: true)
- * @returns {Promise<void>}
- */
 const MODEL_URL = '/models/dima806_ai_real/onnx/model.onnx';
 
 export async function load(options = {}) {
   if (session) return session;
-
-  lastLoadOptions = options;
+  if (loadingPromise) return loadingPromise;
 
   console.log(`[${MODEL_ID}] Loading model from: ${MODEL_URL}`);
+  loadingPromise = createSession(MODEL_URL, options.onProgress)
+    .then(s => { session = s; return s; })
+    .finally(() => { loadingPromise = null; });
 
-  session = await createSession(MODEL_URL, options.onProgress);
-
-  return session;
+  return loadingPromise;
 }
 
 /**
@@ -48,7 +41,7 @@ export async function load(options = {}) {
  * @returns {Promise<Object>} Prediction results
  */
 export async function predict(imageSource) {
-  if (!session) await load(lastLoadOptions);
+  if (!session) await load();
 
   // ViT uses ImageNet normalization
   const tensor = await preprocessImage(imageSource, {
@@ -89,7 +82,10 @@ export async function predict(imageSource) {
  * Unload the model from memory
  */
 export function unload() {
-  session = null;
+  if (session) {
+    session.release();
+    session = null;
+  }
 }
 
 /**

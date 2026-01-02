@@ -361,10 +361,10 @@
 
   // Default model URLs to pre-warm (can be overridden via SW message)
   const DEFAULT_MODEL_URLS = [
+    '/models/ateeqq/onnx/model.onnx',
     '/models/dima806_ai_real/onnx/model.onnx',
-    '/models/smogy/onnx/model.onnx',
-    '/models/umm_maybe/onnx/model.onnx',
-    '/models/prithiv_v2/onnx/model.onnx'
+    '/models/prithiv_v2/onnx/model.onnx',
+    '/models/smogy/onnx/model.onnx'
   ];
 
   // Add prewarm function to __ModelCache__

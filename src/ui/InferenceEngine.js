@@ -315,8 +315,8 @@ function calculatePartialVerdict(completedResults) {
       verdict: aiVotes > 0 ? 'LIKELY_AI' : 'LIKELY_REAL',
       confidence: Math.round(avgConfidence),
       modelsComplete: validResults.length,
-      modelsTotal: 6,
-      message: `Preliminary result based on ${validResults.length}/6 models`
+      modelsTotal: 4,
+      message: `Preliminary result based on ${validResults.length}/4 models`
     };
   }
   return null;
@@ -480,22 +480,31 @@ async function runModelsSequential(imageSource, modelIds, opts, signal) {
  * @private
  */
 async function runSingleModelWithTimeout(imageSource, modelId, opts, signal) {
-  return Promise.race([
-    runSingleModel(imageSource, modelId, opts, signal),
-    createTimeout(opts.timeout, modelId)
-  ]);
+  const { promise: timeoutPromise, cancel: cancelTimeout } = createTimeout(opts.timeout, modelId);
+
+  try {
+    return await Promise.race([
+      runSingleModel(imageSource, modelId, opts, signal),
+      timeoutPromise
+    ]);
+  } finally {
+    cancelTimeout();
+  }
 }
 
 /**
- * Create timeout promise
+ * Create timeout promise with cancel capability
  * @private
  */
 function createTimeout(ms, modelId) {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
+  let timeoutId;
+  const promise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
       reject(new Error(`Model ${modelId} timed out after ${ms}ms`));
     }, ms);
   });
+  const cancel = () => clearTimeout(timeoutId);
+  return { promise, cancel };
 }
 
 /**
@@ -624,56 +633,6 @@ export async function runSingleModel(imageSource, modelId, opts = {}, signal = n
       confidence: 0
     };
   }
-}
-
-/**
- * Prepare image data for inference
- * @private
- */
-async function prepareImageData(imageSource) {
-  // Create canvas to extract pixel data
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-
-  let image;
-
-  if (imageSource instanceof Blob) {
-    // Convert Blob to Image
-    const url = URL.createObjectURL(imageSource);
-    try {
-      image = await loadImage(url);
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  } else if (imageSource instanceof HTMLImageElement) {
-    image = imageSource;
-  } else if (imageSource instanceof HTMLCanvasElement) {
-    return imageSource.getContext('2d').getImageData(
-      0, 0, imageSource.width, imageSource.height
-    );
-  } else {
-    throw new Error('Unsupported image source type');
-  }
-
-  // Resize to model input size (typically 224x224 or 299x299)
-  canvas.width = 224;
-  canvas.height = 224;
-  ctx.drawImage(image, 0, 0, 224, 224);
-
-  return ctx.getImageData(0, 0, 224, 224);
-}
-
-/**
- * Load image from URL
- * @private
- */
-function loadImage(url) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = url;
-  });
 }
 
 /**

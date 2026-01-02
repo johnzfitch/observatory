@@ -10,11 +10,11 @@
  * Uses direct ONNX Runtime for inference.
  */
 
-import { createSession, createTensor } from '../core/ort-runtime.js';
+import { createSession } from '../core/ort-runtime.js';
 import { preprocessImage, softmax, NORMALIZATION } from '../core/preprocessing.js';
 
 let session = null;
-let lastLoadOptions = {};
+let loadingPromise = null;
 
 export const MODEL_ID = 'smogy';
 export const HF_MODEL = 'Smogy/SMOGY-Ai-images-detector';
@@ -32,14 +32,14 @@ const MODEL_URL = '/models/smogy/onnx/model.onnx';
  */
 export async function load(options = {}) {
   if (session) return session;
+  if (loadingPromise) return loadingPromise;
 
-  lastLoadOptions = options;
+  console.log(`[${MODEL_ID}] Loading model from: ${MODEL_URL}`);
+  loadingPromise = createSession(MODEL_URL, options.onProgress)
+    .then(s => { session = s; return s; })
+    .finally(() => { loadingPromise = null; });
 
-  console.log(`[smogy] Loading model from: ${MODEL_URL}`);
-
-  session = await createSession(MODEL_URL, options.onProgress);
-
-  return session;
+  return loadingPromise;
 }
 
 /**
@@ -48,7 +48,7 @@ export async function load(options = {}) {
  * @returns {Promise<Object>} Prediction results
  */
 export async function predict(imageSource) {
-  if (!session) await load(lastLoadOptions);
+  if (!session) await load();
 
   // Preprocess with ImageNet normalization (standard for Swin Transformer)
   const tensor = await preprocessImage(imageSource, {
@@ -86,7 +86,10 @@ export async function predict(imageSource) {
  * Unload the model from memory
  */
 export function unload() {
-  session = null;
+  if (session) {
+    session.release();
+    session = null;
+  }
 }
 
 /**

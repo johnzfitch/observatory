@@ -992,16 +992,21 @@
         renderModelCategories();
         updateAnalyzeButton();
       };
-      elements.faceManipulationSelectAll.onclick = () => {
-        ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS').forEach(m => state.selectedModels.add(m.id));
-        renderModelCategories();
-        updateAnalyzeButton();
-      };
-      elements.faceManipulationClear.onclick = () => {
-        ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS').forEach(m => state.selectedModels.delete(m.id));
-        renderModelCategories();
-        updateAnalyzeButton();
-      };
+      // Face manipulation section is disabled - only set up if elements exist
+      if (elements.faceManipulationSelectAll) {
+        elements.faceManipulationSelectAll.onclick = () => {
+          ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS').forEach(m => state.selectedModels.add(m.id));
+          renderModelCategories();
+          updateAnalyzeButton();
+        };
+      }
+      if (elements.faceManipulationClear) {
+        elements.faceManipulationClear.onclick = () => {
+          ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS').forEach(m => state.selectedModels.delete(m.id));
+          renderModelCategories();
+          updateAnalyzeButton();
+        };
+      }
     }
 
     // ========================================

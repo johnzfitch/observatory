@@ -419,11 +419,15 @@
 
     function renderModelCategories() {
       renderCategory('FULL_IMAGE_DETECTORS', elements.fullImageList);
-      renderCategory('FACE_MANIPULATION_DETECTORS', elements.faceManipulationList);
+      // Face manipulation section is disabled - no models available
+      if (elements.faceManipulationList) {
+        renderCategory('FACE_MANIPULATION_DETECTORS', elements.faceManipulationList);
+      }
       updateCategoryCounts();
     }
 
     function renderCategory(category, container) {
+      if (!container) return;
       container.replaceChildren();
       const models = ModelManager.getModelsByCategory(category);
       models.forEach(model => {
@@ -447,11 +451,16 @@
 
     function updateCategoryCounts() {
       const fullImageModels = ModelManager.getModelsByCategory('FULL_IMAGE_DETECTORS');
-      const faceModels = ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS');
       const fullImageSelected = fullImageModels.filter(m => state.selectedModels.has(m.id)).length;
-      const faceSelected = faceModels.filter(m => state.selectedModels.has(m.id)).length;
-      elements.fullImageCount.textContent = `${fullImageSelected}/${fullImageModels.length}`;
-      elements.faceManipulationCount.textContent = `${faceSelected}/${faceModels.length}`;
+      if (elements.fullImageCount) {
+        elements.fullImageCount.textContent = `${fullImageSelected}/${fullImageModels.length}`;
+      }
+      // Face manipulation section is disabled
+      if (elements.faceManipulationCount) {
+        const faceModels = ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS');
+        const faceSelected = faceModels.filter(m => state.selectedModels.has(m.id)).length;
+        elements.faceManipulationCount.textContent = `${faceSelected}/${faceModels.length}`;
+      }
     }
 
     function updateModelStatus(modelId, status) {

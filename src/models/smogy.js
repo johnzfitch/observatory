@@ -6,12 +6,15 @@
  *
  * Swin Transformer fine-tuned for 2024 AI image detection.
  * Improved performance on newer generative models (DALL-E, Imagen, etc.)
+ *
+ * Uses direct ONNX Runtime for inference.
  */
 
-import { configureTransformersEnv } from '../config/paths.js';
+import { createSession, createTensor } from '../core/ort-runtime.js';
+import { preprocessImage, softmax, NORMALIZATION } from '../core/preprocessing.js';
 
-let classifier = null;
-let isLoading = false;
+let session = null;
+let lastLoadOptions = {};
 
 export const MODEL_ID = 'smogy';
 export const HF_MODEL = 'Smogy/SMOGY-Ai-images-detector';
@@ -19,97 +22,50 @@ export const HF_MODEL_ONNX = 'amrita-detectly/detect-ai-image-v1';
 export const DISPLAY_NAME = 'SMOGY AI Detector';
 export const ACCURACY = '98.2%';
 
+const MODEL_URL = '/models/smogy/onnx/model.onnx';
+
 /**
- * Load the model from local ONNX or HuggingFace
+ * Load the model using ONNX Runtime directly
  * @param {Object} options - Loading options
- * @param {string} options.device - Device to use ('webgpu', 'wasm', or 'cpu')
- * @param {boolean} options.useRemote - Use HuggingFace instead of local ONNX
  * @param {Function} options.onProgress - Progress callback
- * @returns {Promise<Object>} The loaded classifier
+ * @returns {Promise<void>}
  */
 export async function load(options = {}) {
-  if (classifier) return classifier;
-  if (isLoading) {
-    // Wait for existing load to complete
-    while (isLoading) await new Promise(r => setTimeout(r, 100));
-    return classifier;
-  }
+  if (session) return session;
 
-  isLoading = true;
-  try {
-    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1');
+  lastLoadOptions = options;
 
-    // Configure Transformers.js for local model loading
-    configureTransformersEnv(env);
+  console.log(`[smogy] Loading model from: ${MODEL_URL}`);
 
-    // Model ID is just the folder name - Transformers.js prepends localModelPath
-    const modelPath = options.useRemote ? HF_MODEL_ONNX : MODEL_ID;
+  session = await createSession(MODEL_URL, options.onProgress);
 
-    classifier = await pipeline('image-classification', modelPath, {
-      device: options.device || 'webgpu',
-      progress_callback: options.onProgress,
-      local_files_only: !options.useRemote
-    });
-
-    return classifier;
-  } finally {
-    isLoading = false;
-  }
+  return session;
 }
 
 /**
  * Run inference on an image
- * @param {string|HTMLImageElement|HTMLCanvasElement} imageSource - Image to analyze
+ * @param {string|HTMLImageElement|HTMLCanvasElement|Blob} imageSource - Image to analyze
  * @returns {Promise<Object>} Prediction results
  */
 export async function predict(imageSource) {
-  if (!classifier) await load();
+  if (!session) await load(lastLoadOptions);
 
-  // Convert Blob to data URL if needed (transformers.js CDN version requires this)
-  let processedImage = imageSource;
-  if (imageSource instanceof Blob) {
-    processedImage = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(imageSource);
-    });
-  }
+  // Preprocess with ImageNet normalization (standard for Swin Transformer)
+  const tensor = await preprocessImage(imageSource, {
+    size: 224,
+    normalization: NORMALIZATION.IMAGENET
+  });
 
-  const results = await classifier(processedImage);
+  const feeds = { pixel_values: tensor };
+  const results = await session.run(feeds);
 
-  // Map results to standard format
-  // Labels: 0="artificial", 1="human" (note: reversed from typical!)
-  // Look for "artificial", "ai", "fake" vs "human", "real"
-  let aiProbability = 0;
-  let detectedLabel = null;
+  // Get logits from results
+  const logits = results.logits?.data ?? Object.values(results)[0].data;
+  const probs = softmax(Array.from(logits));
 
-  for (const r of results) {
-    const label = r.label.toLowerCase();
-    if (label.includes('artificial') || label.includes('ai') || label.includes('fake') || label.includes('generated')) {
-      aiProbability = r.score;
-      detectedLabel = r.label;
-      break;
-    }
-    if (label.includes('human') || label.includes('real') || label.includes('authentic')) {
-      aiProbability = 1 - r.score;
-      detectedLabel = r.label;
-      break;
-    }
-  }
-
-  // Fallback: if labels are numeric like "0"/"1"
-  // Based on config.json: 0=artificial, 1=human
-  if (aiProbability === 0 && results.length >= 2) {
-    const firstLabel = results[0].label.toLowerCase();
-    if (firstLabel === '0' || firstLabel === 'artificial') {
-      aiProbability = results[0].score;
-      detectedLabel = results[0].label;
-    } else if (firstLabel === '1' || firstLabel === 'human') {
-      aiProbability = 1 - results[0].score;
-      detectedLabel = results[0].label;
-    }
-  }
+  // Label order from config.json: {"0": "artificial", "1": "human"}
+  // probs[0] = AI/artificial probability, probs[1] = Human probability
+  const aiProbability = probs[0];
 
   // Calculate confidence as distance from decision boundary (0.5)
   const confidence = Math.abs(aiProbability - 0.5) * 2;
@@ -121,8 +77,8 @@ export async function predict(imageSource) {
     rawScore: aiProbability,
     verdict: aiProbability >= 0.5 ? 'AI' : 'REAL',
     confidence: Math.round(confidence * 1000) / 10, // Percentage with 1 decimal
-    detectedLabel,
-    rawResults: results
+    detectedLabel: aiProbability >= 0.5 ? 'artificial' : 'human',
+    rawResults: probs
   };
 }
 
@@ -130,7 +86,7 @@ export async function predict(imageSource) {
  * Unload the model from memory
  */
 export function unload() {
-  classifier = null;
+  session = null;
 }
 
 /**
@@ -138,7 +94,7 @@ export function unload() {
  * @returns {boolean} True if loaded
  */
 export function isLoaded() {
-  return classifier !== null;
+  return session !== null;
 }
 
 /**

@@ -7,12 +7,15 @@
  * Accuracy: 92.1%
  * Precision/Recall: Realism P=0.968 R=0.871, Deepfake P=0.883 R=0.972
  * Labels: "Realism" (real/human) vs "Deepfake" (AI/fake)
+ *
+ * Uses direct ONNX Runtime for optimal performance.
  */
 
-import { configureTransformersEnv } from '../config/paths.js';
+import { createSession } from '../core/ort-runtime.js';
+import { preprocessImage, softmax, NORMALIZATION } from '../core/preprocessing.js';
 
-let classifier = null;
-let isLoading = false;
+let session = null;
+let lastLoadOptions = {};
 
 export const MODEL_ID = 'prithiv_v2';
 export const HF_MODEL = 'prithivMLmods/Deep-Fake-Detector-v2-Model';
@@ -21,95 +24,69 @@ export const DISPLAY_NAME = 'Prithiv Deepfake v2';
 export const ACCURACY = '92.1%';
 export const CATEGORY = 'digital_art';
 
+const MODEL_URL = '/models/prithiv_v2/onnx/model.onnx';
+
+// Label mapping from config.json: {"0": "Realism", "1": "Deepfake"}
+const LABELS = {
+  0: 'Realism',
+  1: 'Deepfake'
+};
+
 /**
- * Load the model from local ONNX or HuggingFace Hub
- *
+ * Load the model using ONNX Runtime directly
  * @param {Object} options - Loading options
- * @param {boolean} options.useRemote - Use HuggingFace instead of local ONNX
- * @param {string} options.device - Device type ('webgpu' or 'wasm', default: 'webgpu')
- * @param {Function} options.onProgress - Progress callback for downloads
- * @returns {Promise<Object>} Loaded classifier pipeline
+ * @param {Function} options.onProgress - Progress callback
+ * @returns {Promise<Object>} The loaded session
  */
 export async function load(options = {}) {
-  if (classifier) return classifier;
-  if (isLoading) {
-    // Wait for existing load to complete
-    while (isLoading) await new Promise(r => setTimeout(r, 100));
-    return classifier;
-  }
+  if (session) return session;
 
-  isLoading = true;
-  try {
-    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1');
+  lastLoadOptions = options;
 
-    // Configure Transformers.js for local model loading
-    configureTransformersEnv(env);
+  console.log(`[${MODEL_ID}] Loading model from: ${MODEL_URL}`);
 
-    // Model ID is just the folder name - Transformers.js prepends localModelPath
-    const modelPath = options.useRemote ? HF_MODEL_ONNX : MODEL_ID;
+  session = await createSession(MODEL_URL, options.onProgress);
 
-    classifier = await pipeline('image-classification', modelPath, {
-      device: options.device || 'webgpu',
-      progress_callback: options.onProgress,
-      local_files_only: !options.useRemote
-    });
-
-    return classifier;
-  } finally {
-    isLoading = false;
-  }
+  return session;
 }
 
 /**
  * Predict whether an image is AI-generated or real
- *
- * @param {string|HTMLImageElement|HTMLCanvasElement} imageSource - Image to analyze
+ * @param {string|HTMLImageElement|HTMLCanvasElement|Blob} imageSource - Image to analyze
  * @returns {Promise<Object>} Prediction results
  */
 export async function predict(imageSource) {
-  if (!classifier) await load();
+  if (!session) await load(lastLoadOptions);
 
-  // Convert Blob to data URL if needed (transformers.js CDN version requires this)
-  let processedImage = imageSource;
-  if (imageSource instanceof Blob) {
-    processedImage = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(imageSource);
-    });
-  }
+  // Preprocess image with ImageNet normalization (standard for ViT models)
+  const tensor = await preprocessImage(imageSource, {
+    size: 224,
+    normalization: NORMALIZATION.IMAGENET
+  });
 
-  const results = await classifier(processedImage);
+  const feeds = { pixel_values: tensor };
+  const results = await session.run(feeds);
 
-  // prithiv_v2 uses "Realism" (real) vs "Deepfake" (AI) labels
-  // We need to extract the AI probability from the results
-  let aiProbability = 0;
+  // Get logits from results
+  const logits = results.logits?.data ?? Object.values(results)[0].data;
+  const probs = softmax(Array.from(logits));
 
-  for (const r of results) {
-    const label = r.label.toLowerCase();
+  // Label order from config.json: {"0": "Realism", "1": "Deepfake"}
+  // probs[0] = Realism (real) probability, probs[1] = Deepfake (AI) probability
+  const aiProbability = probs[1];
 
-    // Check for AI/fake indicators
-    if (label.includes('deepfake') || label.includes('fake') || label.includes('ai')) {
-      aiProbability = r.score;
-      break;
-    }
-
-    // Check for real indicators (invert the score)
-    if (label.includes('realism') || label.includes('real') || label.includes('authentic')) {
-      aiProbability = 1 - r.score;
-      break;
-    }
-  }
+  // Calculate confidence as distance from decision boundary (0.5)
+  const confidence = Math.abs(aiProbability - 0.5) * 2;
 
   return {
     modelId: MODEL_ID,
     displayName: DISPLAY_NAME,
-    aiProbability: Math.round(aiProbability * 1000) / 10, // Convert to percentage
+    aiProbability: Math.round(aiProbability * 1000) / 10, // Percentage with 1 decimal
     rawScore: aiProbability,
     verdict: aiProbability >= 0.5 ? 'AI' : 'REAL',
-    confidence: Math.round(Math.abs(aiProbability - 0.5) * 2 * 1000) / 10, // Convert to percentage
-    rawResults: results
+    confidence: Math.round(confidence * 1000) / 10, // Percentage with 1 decimal
+    detectedLabel: aiProbability >= 0.5 ? LABELS[1] : LABELS[0],
+    rawResults: probs
   };
 }
 
@@ -117,14 +94,50 @@ export async function predict(imageSource) {
  * Unload the model from memory
  */
 export function unload() {
-  classifier = null;
+  session = null;
 }
 
 /**
  * Check if model is currently loaded
- *
  * @returns {boolean} True if model is loaded
  */
 export function isLoaded() {
-  return classifier !== null;
+  return session !== null;
+}
+
+/**
+ * Get model metadata
+ * @returns {Object} Model information
+ */
+export function getInfo() {
+  return {
+    modelId: MODEL_ID,
+    displayName: DISPLAY_NAME,
+    hfModel: HF_MODEL,
+    hfModelOnnx: HF_MODEL_ONNX,
+    accuracy: ACCURACY,
+    category: CATEGORY,
+    architecture: 'ViT-Base (google/vit-base-patch16-224-in21k)',
+    inputSize: 224,
+    parameterCount: '85.8M',
+    labels: LABELS,
+    performance: {
+      accuracy: '92.1%',
+      realismPrecision: '96.8%',
+      realismRecall: '87.1%',
+      deepfakePrecision: '88.3%',
+      deepfakeRecall: '97.2%'
+    },
+    strengths: [
+      'High recall for deepfake detection (97.2%)',
+      'Well-balanced precision/recall',
+      'Standard ViT architecture',
+      'Direct ONNX Runtime for optimal performance'
+    ],
+    limitations: [
+      'Lower overall accuracy compared to newer models',
+      'May struggle with subtle manipulations',
+      'Binary classification only (Realism vs Deepfake)'
+    ]
+  };
 }

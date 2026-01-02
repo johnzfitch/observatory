@@ -6,12 +6,15 @@
  * Note: Model trained ~2 years ago. Creator notes significant concept drift
  * due to advances in AI generation. Consider lowering confidence thresholds
  * or retraining with modern datasets for production use.
+ *
+ * Uses direct ONNX Runtime with shared preprocessing.
  */
 
-import { configureTransformersEnv } from '../config/paths.js';
+import { createSession, createTensor } from '../core/ort-runtime.js';
+import { preprocessImage, softmax, NORMALIZATION } from '../core/preprocessing.js';
 
-let classifier = null;
-let isLoading = false;
+let session = null;
+let lastLoadOptions = {};
 
 export const MODEL_ID = 'dima806_ai_real';
 export const HF_MODEL = 'dima806/ai_vs_real_image_detection';
@@ -19,129 +22,50 @@ export const DISPLAY_NAME = 'Dima806 AI vs Real';
 export const ACCURACY = '98.2%';
 
 /**
- * Load the model from local ONNX files
+ * Load the model using ONNX Runtime directly
  * @param {Object} options - Loading options
- * @param {string} options.device - Device to use ('webgpu', 'wasm', or 'cpu')
  * @param {Function} options.onProgress - Progress callback
- * @param {boolean} options.useRemote - Fall back to HuggingFace if local fails
- * @returns {Promise<Object>} The loaded classifier
+ * @param {boolean} options.useRemote - Use HuggingFace CDN (default: true)
+ * @returns {Promise<void>}
  */
+const MODEL_URL = '/models/dima806_ai_real/onnx/model.onnx';
+
 export async function load(options = {}) {
-  console.log(`[${MODEL_ID}] [LOAD] load() called with options:`, options);
+  if (session) return session;
 
-  if (classifier) {
-    console.log(`[${MODEL_ID}]   [OK] Model already loaded, returning cached classifier`);
-    return classifier;
-  }
+  lastLoadOptions = options;
 
-  if (isLoading) {
-    console.log(`[${MODEL_ID}]   ⏳ Model is currently loading, waiting...`);
-    // Wait for existing load to complete
-    while (isLoading) await new Promise(r => setTimeout(r, 100));
-    console.log(`[${MODEL_ID}]   [OK] Wait complete, returning classifier`);
-    return classifier;
-  }
+  console.log(`[${MODEL_ID}] Loading model from: ${MODEL_URL}`);
 
-  console.log(`[${MODEL_ID}] [START] Starting model load process...`);
-  isLoading = true;
+  session = await createSession(MODEL_URL, options.onProgress);
 
-  try {
-    console.log(`[${MODEL_ID}]   [LOAD] Importing transformers.js from CDN`);
-    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1');
-    console.log(`[${MODEL_ID}]   [OK] Transformers.js imported successfully`);
-    console.log(`[${MODEL_ID}]     - pipeline function available:`, !!pipeline);
-    console.log(`[${MODEL_ID}]     - env object available:`, !!env);
-
-    // Configure Transformers.js for local model loading
-    console.log(`[${MODEL_ID}]   [CONFIG]  Configuring transformers.js environment...`);
-    configureTransformersEnv(env);
-    console.log(`[${MODEL_ID}]   [OK] Environment configured`);
-
-    // Model ID is just the folder name - Transformers.js prepends localModelPath
-    const modelPath = options.useRemote ? HF_MODEL : MODEL_ID;
-    const device = options.device || 'webgpu';
-    const localFilesOnly = !options.useRemote;
-
-    console.log(`[${MODEL_ID}]   [CONFIG] Pipeline configuration:`);
-    console.log(`[${MODEL_ID}]     - task: image-classification`);
-    console.log(`[${MODEL_ID}]     - modelPath: ${modelPath}`);
-    console.log(`[${MODEL_ID}]     - device: ${device}`);
-    console.log(`[${MODEL_ID}]     - local_files_only: ${localFilesOnly}`);
-
-    console.log(`[${MODEL_ID}]   [BUILD] Creating pipeline...`);
-    classifier = await pipeline('image-classification', modelPath, {
-      device: device,
-      progress_callback: options.onProgress,
-      local_files_only: localFilesOnly
-    });
-
-    console.log(`[${MODEL_ID}]   [SUCCESS] Pipeline created successfully!`);
-    console.log(`[${MODEL_ID}]     - classifier type:`, typeof classifier);
-    console.log(`[${MODEL_ID}]     - classifier is callable:`, typeof classifier === 'function');
-
-    return classifier;
-  } catch (error) {
-    console.error(`[${MODEL_ID}]   [ERROR] Model load FAILED:`, error);
-    console.error(`[${MODEL_ID}]     - Error name:`, error.name);
-    console.error(`[${MODEL_ID}]     - Error message:`, error.message);
-    console.error(`[${MODEL_ID}]     - Error stack:`, error.stack);
-    throw error;
-  } finally {
-    isLoading = false;
-    console.log(`[${MODEL_ID}]   [END] Load process complete (isLoading = false)`);
-  }
+  return session;
 }
 
 /**
  * Run inference on an image
- * @param {string|HTMLImageElement|HTMLCanvasElement} imageSource - Image to analyze
+ * @param {string|HTMLImageElement|HTMLCanvasElement|Blob} imageSource - Image to analyze
  * @returns {Promise<Object>} Prediction results
  */
 export async function predict(imageSource) {
-  console.log(`[${MODEL_ID}] [RUN] predict() called`);
-  console.log(`[${MODEL_ID}]   - imageSource type:`, imageSource.constructor.name);
+  if (!session) await load(lastLoadOptions);
 
-  if (!classifier) {
-    console.log(`[${MODEL_ID}]   [WARN]  Classifier not loaded, loading now...`);
-    await load();
-  }
+  // ViT uses ImageNet normalization
+  const tensor = await preprocessImage(imageSource, {
+    size: 224,
+    normalization: NORMALIZATION.IMAGENET
+  });
 
-  // Convert Blob to data URL if needed (transformers.js CDN version requires this)
-  let processedImage = imageSource;
-  if (imageSource instanceof Blob) {
-    console.log(`[${MODEL_ID}]   🔄 Converting Blob to data URL...`);
-    processedImage = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(imageSource);
-    });
-    console.log(`[${MODEL_ID}]   [OK] Data URL created`);
-  }
+  const feeds = { pixel_values: tensor };
+  const results = await session.run(feeds);
 
-  console.log(`[${MODEL_ID}]   [EXEC] Running classifier...`);
-  const results = await classifier(processedImage);
-  console.log(`[${MODEL_ID}]   [OK] Classifier returned results:`, results);
+  // Get logits from results
+  const logits = results.logits?.data ?? Object.values(results)[0].data;
+  const probs = softmax(Array.from(logits));
 
-  // Map results to standard format
-  // Labels from Python code: "ai", "fake", "generated" vs "real"
-  // The model.config.id2label should match these patterns
-  let aiProbability = 0;
-  let detectedLabel = null;
-
-  for (const r of results) {
-    const label = r.label.toLowerCase();
-    if (label.includes('ai') || label.includes('fake') || label.includes('generated') || label.includes('artificial')) {
-      aiProbability = r.score;
-      detectedLabel = r.label;
-      break;
-    }
-    if (label.includes('real') || label.includes('human') || label.includes('authentic')) {
-      aiProbability = 1 - r.score;
-      detectedLabel = r.label;
-      break;
-    }
-  }
+  // Label order from config.json: {"0": "REAL", "1": "FAKE"}
+  // probs[0] = REAL probability, probs[1] = FAKE/AI probability
+  const aiProbability = probs[1];
 
   // Calculate confidence as distance from decision boundary (0.5)
   const confidence = Math.abs(aiProbability - 0.5) * 2;
@@ -153,8 +77,8 @@ export async function predict(imageSource) {
     rawScore: aiProbability,
     verdict: aiProbability >= 0.5 ? 'AI' : 'REAL',
     confidence: Math.round(confidence * 1000) / 10, // Percentage with 1 decimal
-    detectedLabel,
-    rawResults: results,
+    detectedLabel: aiProbability >= 0.5 ? 'FAKE' : 'REAL',
+    rawResults: probs,
 
     // Warning about model age and concept drift
     warning: 'Model trained ~2 years ago. May underperform on modern AI-generated images.'
@@ -165,7 +89,7 @@ export async function predict(imageSource) {
  * Unload the model from memory
  */
 export function unload() {
-  classifier = null;
+  session = null;
 }
 
 /**
@@ -173,7 +97,7 @@ export function unload() {
  * @returns {boolean} True if loaded
  */
 export function isLoaded() {
-  return classifier !== null;
+  return session !== null;
 }
 
 /**
@@ -186,7 +110,7 @@ export function getInfo() {
     displayName: DISPLAY_NAME,
     hfModel: HF_MODEL,
     accuracy: ACCURACY,
-    architecture: 'ViT (google/vit-base-patch16-224-in21k)',
+    architecture: 'ViT (google/vit-base-patch16-224-in21k) - Direct ONNX Runtime',
     inputSize: 224,
     parameterCount: '85.8M',
     trainingDataset: 'CIFAKE',
@@ -194,7 +118,7 @@ export function getInfo() {
       'Trained ~2 years ago',
       'Concept drift from modern AI generation techniques',
       'Creator recommends retraining with current datasets',
-      'Consider lowering confidence thresholds (0.5 → 0.1)'
+      'Consider lowering confidence thresholds (0.5 -> 0.1)'
     ]
   };
 }

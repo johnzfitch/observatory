@@ -6,11 +6,14 @@
  * Vision Transformer (ViT) fine-tuned on OpenForensics dataset.
  * Designed for real vs fake (deepfake) detection.
  * Trained on 16,000 images with 96.56% test accuracy.
+ *
+ * Uses direct ONNX Runtime for inference.
  */
 
-import { configureTransformersEnv } from '../config/paths.js';
+import { createSession, createTensor } from '../core/ort-runtime.js';
+import { preprocessImage, softmax, NORMALIZATION } from '../core/preprocessing.js';
 
-let classifier = null;
+let session = null;
 let isLoading = false;
 
 export const MODEL_ID = 'hamzenium';
@@ -18,39 +21,28 @@ export const HF_MODEL = 'Hamzenium/ViT-Deepfake-Classifier';
 export const DISPLAY_NAME = 'Hamzenium ViT Deepfake';
 export const ACCURACY = '96.56%';
 
+const MODEL_URL = '/models/hamzenium/onnx/model.onnx';
+
 /**
- * Load the model from local ONNX or HuggingFace
+ * Load the model using ONNX Runtime directly
  * @param {Object} options - Loading options
- * @param {string} options.device - Device to use ('webgpu', 'wasm', or 'cpu')
- * @param {boolean} options.useRemote - Use HuggingFace instead of local ONNX
  * @param {Function} options.onProgress - Progress callback
- * @returns {Promise<Object>} The loaded classifier
+ * @returns {Promise<Object>} The loaded session
  */
 export async function load(options = {}) {
-  if (classifier) return classifier;
+  if (session) return session;
   if (isLoading) {
     // Wait for existing load to complete
     while (isLoading) await new Promise(r => setTimeout(r, 100));
-    return classifier;
+    return session;
   }
 
   isLoading = true;
   try {
-    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1');
-
-    // Configure Transformers.js for local model loading
-    configureTransformersEnv(env);
-
-    // Model ID is just the folder name - Transformers.js prepends localModelPath
-    const modelPath = options.useRemote ? HF_MODEL : MODEL_ID;
-
-    classifier = await pipeline('image-classification', modelPath, {
-      device: options.device || 'webgpu',
-      progress_callback: options.onProgress,
-      local_files_only: !options.useRemote
-    });
-
-    return classifier;
+    console.log(`[${MODEL_ID}] Loading model from: ${MODEL_URL}`);
+    session = await createSession(MODEL_URL, options.onProgress);
+    console.log(`[${MODEL_ID}] Model loaded successfully`);
+    return session;
   } finally {
     isLoading = false;
   }
@@ -58,57 +50,29 @@ export async function load(options = {}) {
 
 /**
  * Run inference on an image
- * @param {string|HTMLImageElement|HTMLCanvasElement} imageSource - Image to analyze
+ * @param {string|HTMLImageElement|HTMLCanvasElement|Blob} imageSource - Image to analyze
  * @returns {Promise<Object>} Prediction results
  */
 export async function predict(imageSource) {
-  if (!classifier) await load();
+  if (!session) await load();
 
-  // Convert Blob to data URL if needed (transformers.js CDN version requires this)
-  let processedImage = imageSource;
-  if (imageSource instanceof Blob) {
-    processedImage = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(imageSource);
-    });
-  }
+  // Preprocess image with ImageNet normalization (standard for ViT)
+  const tensor = await preprocessImage(imageSource, {
+    size: 224,
+    normalization: NORMALIZATION.IMAGENET
+  });
 
-  const results = await classifier(processedImage);
+  // Run inference
+  const feeds = { pixel_values: tensor };
+  const results = await session.run(feeds);
 
-  // Map results to standard format
-  // Labels: 0="real", 1="fake"
-  // Look for "fake", "deepfake" vs "real", "realism"
-  let aiProbability = 0;
-  let detectedLabel = null;
+  // Get logits from results
+  const logits = results.logits?.data ?? Object.values(results)[0].data;
+  const probs = softmax(Array.from(logits));
 
-  for (const r of results) {
-    const label = r.label.toLowerCase();
-    if (label.includes('fake') || label.includes('deepfake') || label.includes('ai') || label.includes('artificial')) {
-      aiProbability = r.score;
-      detectedLabel = r.label;
-      break;
-    }
-    if (label.includes('real') || label.includes('realism') || label.includes('human')) {
-      aiProbability = 1 - r.score;
-      detectedLabel = r.label;
-      break;
-    }
-  }
-
-  // Fallback: if labels are numeric like "0"/"1"
-  // Based on config.json: 0=real, 1=fake
-  if (aiProbability === 0 && results.length >= 2) {
-    const firstLabel = results[0].label.toLowerCase();
-    if (firstLabel === '0' || firstLabel === 'real') {
-      aiProbability = 1 - results[0].score;
-      detectedLabel = results[0].label;
-    } else if (firstLabel === '1' || firstLabel === 'fake') {
-      aiProbability = results[0].score;
-      detectedLabel = results[0].label;
-    }
-  }
+  // Label order from config.json: {"0": "real", "1": "fake"}
+  // probs[0] = real probability, probs[1] = fake/AI probability
+  const aiProbability = probs[1];
 
   // Calculate confidence as distance from decision boundary (0.5)
   const confidence = Math.abs(aiProbability - 0.5) * 2;
@@ -120,8 +84,8 @@ export async function predict(imageSource) {
     rawScore: aiProbability,
     verdict: aiProbability >= 0.5 ? 'AI' : 'REAL',
     confidence: Math.round(confidence * 1000) / 10, // Percentage with 1 decimal
-    detectedLabel,
-    rawResults: results
+    detectedLabel: aiProbability >= 0.5 ? 'fake' : 'real',
+    rawResults: probs
   };
 }
 
@@ -129,7 +93,7 @@ export async function predict(imageSource) {
  * Unload the model from memory
  */
 export function unload() {
-  classifier = null;
+  session = null;
 }
 
 /**
@@ -137,7 +101,7 @@ export function unload() {
  * @returns {boolean} True if loaded
  */
 export function isLoaded() {
-  return classifier !== null;
+  return session !== null;
 }
 
 /**
@@ -150,7 +114,7 @@ export function getInfo() {
     displayName: DISPLAY_NAME,
     hfModel: HF_MODEL,
     accuracy: ACCURACY,
-    architecture: 'ViT (google/vit-base-patch16-224-in21k)',
+    architecture: 'ViT (google/vit-base-patch16-224-in21k, Direct ONNX Runtime)',
     inputSize: 224,
     parameterCount: '85.8M',
     trainingDataset: 'OpenForensics (16,000 training, 2,000 validation, 2,000 test)',

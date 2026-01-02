@@ -516,7 +516,7 @@ const loadedModelModules = new Map();
 export async function runSingleModel(imageSource, modelId, opts = {}, signal = null) {
   const startTime = performance.now();
 
-  console.log(`[InferenceEngine] 🚀 Starting inference for model: ${modelId}`);
+  console.log(`[InferenceEngine] Starting inference for model: ${modelId}`);
 
   try {
     // Check abort
@@ -528,28 +528,28 @@ export async function runSingleModel(imageSource, modelId, opts = {}, signal = n
     if (!/^[a-z0-9_-]+$/i.test(modelId)) {
       throw new Error(`Invalid model ID format: ${modelId}`);
     }
-    console.log(`[InferenceEngine]   ✓ Model ID validated: ${modelId}`);
+    console.log(`[InferenceEngine]   Model ID validated: ${modelId}`);
 
     // Load model module (cached after first load)
     let modelModule = loadedModelModules.get(modelId);
     if (!modelModule) {
-      console.log(`[InferenceEngine]   📦 Loading model module: ../models/${modelId}.js`);
+      console.log(`[InferenceEngine]   Loading model module: ../models/${modelId}.js`);
       modelModule = await import(`../models/${modelId}.js`);
       loadedModelModules.set(modelId, modelModule);
-      console.log(`[InferenceEngine]   ✓ Model module loaded and cached`);
+      console.log(`[InferenceEngine]   Model module loaded and cached`);
     } else {
-      console.log(`[InferenceEngine]   ♻️  Using cached model module`);
+      console.log(`[InferenceEngine]   Using cached model module`);
     }
 
     // Ensure model is loaded
-    console.log(`[InferenceEngine]   🔍 Checking if model is loaded...`);
+    console.log(`[InferenceEngine]   Checking if model is loaded...`);
     console.log(`[InferenceEngine]     - modelModule.isLoaded exists:`, !!modelModule.isLoaded);
     console.log(`[InferenceEngine]     - modelModule.isLoaded():`, modelModule.isLoaded ? modelModule.isLoaded() : 'N/A');
 
     if (!modelModule.isLoaded || !modelModule.isLoaded()) {
       const device = engineState.backend === 'webgpu' ? 'webgpu' : 'wasm';
-      console.log(`[InferenceEngine]   ⚡ Model not loaded, loading with device: ${device}`);
-      console.log(`[InferenceEngine]   📥 Calling modelModule.load({ device: "${device}" })...`);
+      console.log(`[InferenceEngine]   Model not loaded, loading with device: ${device}`);
+      console.log(`[InferenceEngine]   Calling modelModule.load({ device: "${device}" })...`);
 
       // Get useRemote from global opts if available (defaults to undefined, letting model choose)
       const loadOptions = {
@@ -559,15 +559,15 @@ export async function runSingleModel(imageSource, modelId, opts = {}, signal = n
       // Pass useRemote option if explicitly set
       if (opts && opts.useRemote !== undefined) {
         loadOptions.useRemote = opts.useRemote;
-        console.log(`[InferenceEngine]   🌐 useRemote: ${opts.useRemote}`);
+        console.log(`[InferenceEngine]   useRemote: ${opts.useRemote}`);
       }
 
       await modelModule.load(loadOptions);
 
-      console.log(`[InferenceEngine]   ✓ Model loaded successfully`);
+      console.log(`[InferenceEngine]   Model loaded successfully`);
       console.log(`[InferenceEngine]     - isLoaded() now returns:`, modelModule.isLoaded());
     } else {
-      console.log(`[InferenceEngine]   ✓ Model already loaded`);
+      console.log(`[InferenceEngine]   Model already loaded`);
     }
 
     // Check abort before prediction
@@ -576,9 +576,9 @@ export async function runSingleModel(imageSource, modelId, opts = {}, signal = n
     }
 
     // Run prediction
-    console.log(`[InferenceEngine]   🔮 Running prediction...`);
+    console.log(`[InferenceEngine]   Running prediction...`);
     const result = await modelModule.predict(imageSource);
-    console.log(`[InferenceEngine]   ✓ Prediction complete:`, {
+    console.log(`[InferenceEngine]   Prediction complete:`, {
       aiProbability: result.aiProbability,
       verdict: result.verdict,
       confidence: result.confidence
@@ -608,7 +608,7 @@ export async function runSingleModel(imageSource, modelId, opts = {}, signal = n
       }
     };
   } catch (error) {
-    console.error(`[InferenceEngine] ❌ Model ${modelId} failed:`, error);
+    console.error(`[InferenceEngine] Model ${modelId} failed:`, error);
     console.error(`[InferenceEngine]   Error name: ${error.name}`);
     console.error(`[InferenceEngine]   Error message: ${error.message}`);
     if (error.stack) {

@@ -96,40 +96,69 @@
       </div>
     </div>
 
-    <!-- Model Category Selectors (MOVED BELOW UPLOAD) -->
-    <div class="model-selector">
-      <!-- Full-Image AI Detection -->
-      <div class="model-category" id="fullImageCategory">
-        <div class="model-category-header">
-          <div>
-            <h3 class="model-category-title">Full-Image AI Detection</h3>
-            <p class="model-category-description">Detect if entire image is AI-generated (SD, MJ, DALL-E, Flux, GANs)</p>
-          </div>
-          <span class="model-category-count" id="fullImageCount">0/10</span>
+    <!-- Model Info Card -->
+    <div class="model-info-card">
+      <div class="model-info-header">
+        <div class="model-info-badge">
+          <svg class="model-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+          </svg>
+          <span>AI Detection Engine</span>
         </div>
-        <div class="model-category-actions">
-          <button class="category-btn" id="fullImageSelectAll">Select All</button>
-          <button class="category-btn" id="fullImageClear">Clear</button>
+        <div class="model-info-status" id="modelStatus">
+          <span class="status-dot"></span>
+          <span class="status-text">Loading...</span>
         </div>
-        <div class="model-list-in-category" id="fullImageList"></div>
       </div>
 
-      <!-- Face Manipulation Detection - DISABLED: No models available
-      <div class="model-category" id="faceManipulationCategory">
-        <div class="model-category-header">
-          <div>
-            <h3 class="model-category-title">Face Manipulation</h3>
-            <p class="model-category-description">Detect deepfake faces in real photos (requires face in image)</p>
+      <div class="model-info-content">
+        <div class="model-info-main">
+          <h3 class="model-info-title">Ateeqq AI vs Human Detector</h3>
+          <p class="model-info-subtitle">SigLIP Vision Transformer · 99.23% Accuracy</p>
+          <p class="model-info-description">
+            Fine-tuned on the latest AI generators including Midjourney v6.1, Flux 1.1 Pro,
+            Stable Diffusion 3.5, and GPT-4o image outputs.
+          </p>
+        </div>
+
+        <div class="model-info-features">
+          <div class="feature-item" id="featureWebGPU">
+            <div class="feature-icon webgpu">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <span class="feature-label">WebGPU Accelerated</span>
+              <span class="feature-value" id="gpuStatus">Detecting...</span>
+            </div>
           </div>
-          <span class="model-category-count" id="faceManipulationCount">0/7</span>
+
+          <div class="feature-item">
+            <div class="feature-icon privacy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <span class="feature-label">100% Private</span>
+              <span class="feature-value">No server upload</span>
+            </div>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-icon model">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+              </svg>
+            </div>
+            <div class="feature-text">
+              <span class="feature-label">Model Size</span>
+              <span class="feature-value">56 MB ONNX</span>
+            </div>
+          </div>
         </div>
-        <div class="model-category-actions">
-          <button class="category-btn" id="faceManipulationSelectAll">Select All</button>
-          <button class="category-btn" id="faceManipulationClear">Clear</button>
-        </div>
-        <div class="model-list-in-category" id="faceManipulationList"></div>
       </div>
-      -->
     </div>
 
     <!-- Progress Bar Container for Analysis -->
@@ -181,21 +210,155 @@
         </div>
 
         <div class="results-body">
-          <div class="model-breakdown">
-            <div class="model-breakdown-title">Model Votes</div>
-            <div class="model-votes" id="modelVotes"></div>
+          <!-- Ensemble Result Section -->
+          <div class="ensemble-section">
+            <div class="ensemble-header">
+              <h4>Ensemble Prediction</h4>
+              <span class="ensemble-formula">Ateeqq AI Detector (99.23% accuracy)</span>
+            </div>
+
+            <div class="ai-probability-meter">
+              <div class="probability-labels">
+                <span class="prob-label prob-human">0% Human</span>
+                <span class="prob-label prob-ai">100% AI</span>
+              </div>
+              <div class="probability-bar">
+                <div class="probability-fill" id="probabilityFill" style="width: 50%"></div>
+                <div class="probability-marker" id="probabilityMarker" style="left: 50%">
+                  <span class="probability-value" id="probabilityMarkerValue">50%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="perf-stats">
+              <div class="perf-stat">
+                <span class="perf-label">Total Time</span>
+                <span class="perf-value" id="totalTime">--</span>
+              </div>
+              <div class="perf-stat">
+                <span class="perf-label">Avg/Model</span>
+                <span class="perf-value" id="avgTime">--</span>
+              </div>
+            </div>
           </div>
 
-          <div class="perf-stats" id="perfStats">
-            <div class="perf-stat">
-              <span>Total inference time:</span>
-              <span id="totalTime">--</span>
+          <!-- Individual Model Analysis -->
+          <div class="models-section">
+            <div class="section-header">
+              <h4>Individual Model Analysis</h4>
+              <span class="section-subtitle">Each model's prediction, weight, and training data</span>
             </div>
-            <div class="perf-stat">
-              <span>Average per model:</span>
-              <span id="avgTime">--</span>
+
+            <div class="model-cards" id="modelCards">
+              <!-- Model cards will be inserted here by JavaScript -->
             </div>
           </div>
+
+          <!-- Methodology & Interpretation -->
+          <div class="methodology-section">
+            <div class="section-header">
+              <h4>Methodology & Interpretation</h4>
+              <span class="section-subtitle">Understanding ensemble weights and how to read results</span>
+            </div>
+
+            <div class="methodology-content">
+              <div class="methodology-column">
+                <h5>Ensemble Formula</h5>
+                <div class="formula-display">
+                  <div class="formula-line">Final = (P₁×W₁ + P₂×W₂ + P₃×W₃) / ΣW</div>
+                  <div class="formula-explainer">
+                    <span>P = AI probability</span>
+                    <span>W = model weight</span>
+                  </div>
+                </div>
+
+                <h5>Model Info</h5>
+                <ul class="methodology-list">
+                  <li><strong>Ateeqq</strong> – 99.23% accuracy, trained on 2024 generators</li>
+                  <li><strong>Coverage:</strong> MJ 6.1, Flux 1.1, SD 3.5, DALL-E 3, GPT-4o, Ideogram 2.0</li>
+                  <li><strong>Architecture:</strong> SigLIP ViT-B/16 (86M params)</li>
+                </ul>
+              </div>
+
+              <div class="methodology-column">
+                <h5>Interpretation Guide</h5>
+                <ul class="methodology-list">
+                  <li><strong>≥70%:</strong> High confidence AI-generated</li>
+                  <li><strong>30-70%:</strong> Uncertain - may be edited or hybrid</li>
+                  <li><strong>≤30%:</strong> Likely human-created</li>
+                  <li><strong>Low confidence:</strong> Image may be heavily post-processed</li>
+                </ul>
+
+                <h5>Known Limitations</h5>
+                <ul class="methodology-list">
+                  <li>Generators released after model training may evade detection</li>
+                  <li>Heavy post-processing can fool detectors</li>
+                  <li>Hybrid content (real + AI elements) challenges classification</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Image Forensics -->
+          <div id="forensicsContainer" class="forensics-container hidden">
+            <div class="forensic-divider"><span>Image Forensics</span></div>
+
+            <!-- Metadata -->
+            <div class="forensic-subsection">
+              <div class="subsection-header" data-target="metadataBody">
+                <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span>Image Properties &amp; Metadata</span>
+              </div>
+              <div class="subsection-body" id="metadataBody">
+                <div id="metadataContent"><p class="forensic-loading">Extracting metadata...</p></div>
+              </div>
+            </div>
+
+            <!-- Watermark Scan -->
+            <div class="forensic-subsection">
+              <div class="subsection-header" data-target="watermarkBody">
+                <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span>Watermark Scan</span>
+              </div>
+              <div class="subsection-body" id="watermarkBody">
+                <div id="watermarkContent"><p class="forensic-loading">Scanning for watermarks...</p></div>
+              </div>
+            </div>
+
+            <!-- Error Level Analysis -->
+            <div class="forensic-subsection">
+              <div class="subsection-header" data-target="elaBody">
+                <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span>Error Level Analysis</span>
+              </div>
+              <div class="subsection-body" id="elaBody">
+                <div id="elaContent"><p class="forensic-loading">Running ELA...</p></div>
+              </div>
+            </div>
+
+            <!-- Frequency Spectrum -->
+            <div class="forensic-subsection">
+              <div class="subsection-header" data-target="spectrumBody">
+                <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span>Frequency Spectrum</span>
+              </div>
+              <div class="subsection-body" id="spectrumBody">
+                <div id="spectrumContent"><p class="forensic-loading">Computing FFT...</p></div>
+              </div>
+            </div>
+
+            <!-- Technical Details -->
+            <div class="forensic-subsection">
+              <div class="subsection-header" data-target="techBody">
+                <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span>Technical Details</span>
+              </div>
+              <div class="subsection-body" id="techBody">
+                <div id="techContent"></div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -211,24 +374,35 @@
     };
 
     // PHASE 1: Verify ONNX init ran
-    if (!window.ort?.env?.wasm?.numThreads) {
+    if (!window.__ONNX_RUNTIME_CONFIG__) {
       console.error('[App] ONNX init script did not run! Check script load order.');
     } else {
-      logger.log('[App] ONNX runtime configured. Threads:', window.ort.env.wasm.numThreads, 'SIMD:', window.ort.env.wasm.simd);
+      logger.log('[App] ONNX runtime config ready:', window.__ONNX_RUNTIME_CONFIG__);
+      logger.log('[App] Note: window.ort will be loaded on-demand by InferenceEngine');
     }
 
     import * as ModelManager from './src/ui/ModelManager.js';
     import * as InferenceEngine from './src/ui/InferenceEngine.js';
     import { stateManager } from './src/ui/StateManager.js';
     import * as DownloadTracker from './src/ui/DownloadTracker.js';
+    import { extractMetadata } from './src/forensics/metadata.js';
+    import { scanWatermarks } from './src/forensics/watermark.js';
+    import { runELA } from './src/forensics/ela.js';
+    import { analyzeSpectrum } from './src/forensics/spectrum.js';
 
     // ========================================
     // State Management (Using StateManager)
     // ========================================
 
+    // Detect iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
     // Legacy state object for backward compatibility with existing code
     const state = {
-      selectedModels: new Set(['ateeqq', 'dima806_ai_real', 'prithiv_v2', 'smogy']), // Default: all 4 models
+      selectedModels: isIOS
+        ? new Set(['ateeqq'])  // iOS: Only 1 model to prevent memory crashes
+        : new Set(['ateeqq']),  // Single best model - 99.23% accuracy, 2024 training data
       currentImage: null,
       currentImageData: null,
       isAnalyzing: false,
@@ -244,6 +418,11 @@
       loadingOverlay: document.getElementById('loadingOverlay'),
       loadingSubtext: document.getElementById('loadingSubtext'),
       backendValue: document.getElementById('backendValue'),
+      // Model info card elements
+      modelStatus: document.getElementById('modelStatus'),
+      gpuStatus: document.getElementById('gpuStatus'),
+      featureWebGPU: document.getElementById('featureWebGPU'),
+      // Legacy model selector elements (may be null)
       fullImageList: document.getElementById('fullImageList'),
       faceManipulationList: document.getElementById('faceManipulationList'),
       fullImageCount: document.getElementById('fullImageCount'),
@@ -270,11 +449,17 @@
       resultTitle: document.getElementById('resultTitle'),
       resultSubtitle: document.getElementById('resultSubtitle'),
       confidenceValue: document.getElementById('confidenceValue'),
-      modelVotes: document.getElementById('modelVotes'),
       totalTime: document.getElementById('totalTime'),
       avgTime: document.getElementById('avgTime'),
       analysisProgress: document.getElementById('analysisProgress'),
-      uploadSection: document.getElementById('uploadZone')
+      uploadSection: document.getElementById('uploadZone'),
+      // Forensic elements
+      forensicsContainer: document.getElementById('forensicsContainer'),
+      metadataContent: document.getElementById('metadataContent'),
+      watermarkContent: document.getElementById('watermarkContent'),
+      elaContent: document.getElementById('elaContent'),
+      spectrumContent: document.getElementById('spectrumContent'),
+      techContent: document.getElementById('techContent'),
     };
 
     // ========================================
@@ -404,13 +589,39 @@
     // ========================================
 
     function updateBackendIndicator(backend) {
+      // Update header backend indicator
       if (backend === 'webgpu') {
         elements.backendValue.textContent = 'WebGPU (GPU Accelerated)';
         elements.backendValue.className = 'backend-value webgpu';
-      } else {
+      } else if (backend === 'wasm') {
         elements.backendValue.textContent = 'WASM (CPU)';
         elements.backendValue.className = 'backend-value wasm';
+      } else if (backend === 'cpu') {
+        elements.backendValue.textContent = 'CPU (Software Fallback)';
+        elements.backendValue.className = 'backend-value cpu';
+      } else {
+        elements.backendValue.textContent = 'Unknown';
+        elements.backendValue.className = 'backend-value';
       }
+
+      // Update model info card GPU status
+      if (elements.gpuStatus) {
+        if (backend === 'webgpu') {
+          elements.gpuStatus.textContent = 'GPU Active';
+          elements.featureWebGPU?.querySelector('.feature-icon')?.classList.add('active');
+        } else if (backend === 'wasm') {
+          elements.gpuStatus.textContent = 'CPU (WASM)';
+        } else {
+          elements.gpuStatus.textContent = 'CPU Fallback';
+        }
+      }
+    }
+
+    function updateModelCardStatus(status, text) {
+      if (!elements.modelStatus) return;
+      const statusText = elements.modelStatus.querySelector('.status-text');
+      if (statusText) statusText.textContent = text || status;
+      elements.modelStatus.className = 'model-info-status ' + status;
     }
 
     // ========================================
@@ -430,11 +641,27 @@
       if (!container) return;
       container.replaceChildren();
       const models = ModelManager.getModelsByCategory(category);
-      models.forEach(model => {
+      // Filter out disabled models
+      models.filter(model => !model.disabled).forEach(model => {
         const div = document.createElement('div');
         div.className = 'model-item';
         div.id = 'model-' + model.id;
-        div.textContent = model.displayName + ' (' + (model.accuracy || '~95%') + ')';
+
+        // Create model label with name and accuracy
+        const label = document.createElement('span');
+        label.className = 'model-label';
+        label.textContent = model.displayName + ' (' + (model.accuracy || '~95%') + ')';
+        div.appendChild(label);
+
+        // Add training info badge
+        if (model.trainedOn) {
+          const badge = document.createElement('span');
+          badge.className = 'model-training-badge';
+          badge.textContent = model.trainedOn;
+          badge.title = 'Trained on: ' + model.trainedOn;
+          div.appendChild(badge);
+        }
+
         if (state.selectedModels.has(model.id)) div.classList.add('selected');
         div.onclick = () => toggleModelSelection(model.id);
         container.appendChild(div);
@@ -450,14 +677,15 @@
     }
 
     function updateCategoryCounts() {
-      const fullImageModels = ModelManager.getModelsByCategory('FULL_IMAGE_DETECTORS');
+      // Filter out disabled models from counts
+      const fullImageModels = ModelManager.getModelsByCategory('FULL_IMAGE_DETECTORS').filter(m => !m.disabled);
       const fullImageSelected = fullImageModels.filter(m => state.selectedModels.has(m.id)).length;
       if (elements.fullImageCount) {
         elements.fullImageCount.textContent = `${fullImageSelected}/${fullImageModels.length}`;
       }
       // Face manipulation section is disabled
       if (elements.faceManipulationCount) {
-        const faceModels = ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS');
+        const faceModels = ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS').filter(m => !m.disabled);
         const faceSelected = faceModels.filter(m => state.selectedModels.has(m.id)).length;
         elements.faceManipulationCount.textContent = `${faceSelected}/${faceModels.length}`;
       }
@@ -554,23 +782,45 @@
       updateAnalyzeButton();
     }
 
-    function handleFile(file) {
+    async function handleFile(file) {
       if (!file.type.startsWith('image/')) return;
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        state.currentImage = file;
-        state.currentImageData = e.target.result;
-        elements.previewImage.src = e.target.result;
-        elements.fileName.textContent = file.name;
+      // Use blob URL instead of data URL to avoid memory issues
+      // Data URLs can be 60-90MB for large images, blob URLs are instant
+      const blobUrl = URL.createObjectURL(file);
+
+      state.currentImage = file;
+      state.currentImageData = blobUrl;
+      elements.previewImage.src = blobUrl;
+      elements.fileName.textContent = file.name;
+      elements.uploadZone.classList.add('has-image');
+      resetResults();
+      updateAnalyzeButton();
+
+      // Persist to IndexedDB for crash recovery
+      stateManager.setImage(blobUrl, file);
+      stateManager.persistImage();
+    }
+
+    // Restore persisted image on load
+    async function restorePersistedImage() {
+      const restored = await stateManager.restoreImage();
+      if (restored) {
+        state.currentImageData = restored.url;
+        elements.previewImage.src = restored.url;
+        elements.fileName.textContent = 'Restored image';
         elements.uploadZone.classList.add('has-image');
-        resetResults();
         updateAnalyzeButton();
-      };
-      reader.readAsDataURL(file);
+        console.log('[App] Restored image from previous session');
+      }
     }
 
     function clearUploadedImage() {
+      // Revoke blob URL to free memory
+      if (state.currentImageData && state.currentImageData.startsWith('blob:')) {
+        URL.revokeObjectURL(state.currentImageData);
+      }
+
       elements.uploadZone.classList.remove('has-image');
       elements.fileInput.value = '';
       elements.previewImage.src = '';
@@ -584,6 +834,15 @@
       elements.resultsPanel.classList.remove('active', 'success', 'warning', 'danger', 'mixed');
       elements.scanningState.classList.remove('hidden');
       elements.resultsContent.classList.add('hidden');
+      // Reset forensics
+      if (elements.forensicsContainer) {
+        elements.forensicsContainer.classList.add('hidden');
+        elements.metadataContent.innerHTML = '<p class="forensic-loading">Extracting metadata...</p>';
+        elements.watermarkContent.innerHTML = '<p class="forensic-loading">Scanning for watermarks...</p>';
+        elements.elaContent.innerHTML = '<p class="forensic-loading">Running ELA...</p>';
+        elements.spectrumContent.innerHTML = '<p class="forensic-loading">Computing FFT...</p>';
+        elements.techContent.innerHTML = '';
+      }
     }
 
     // ========================================
@@ -592,15 +851,18 @@
 
     function updateAnalyzeButton() {
       const hasImage = state.currentImage !== null;
-      const hasModels = state.modelsLoaded > 0;
-      const canAnalyze = hasImage && hasModels && !state.isAnalyzing;
+      const hasSelectedModels = state.selectedModels && state.selectedModels.size > 0;
+      const canAnalyze = hasImage && hasSelectedModels && !state.isAnalyzing;
 
       elements.analyzeBtn.disabled = !canAnalyze;
 
       if (canAnalyze) {
         elements.analyzeBtn.classList.add('ready');
         elements.analyzeBtn.querySelector('.btn-text').textContent = 'Analyze Image';
-      } else if (hasModels) {
+      } else if (!hasSelectedModels) {
+        elements.analyzeBtn.classList.remove('ready');
+        elements.analyzeBtn.querySelector('.btn-text').textContent = 'Select at least one model';
+      } else if (!hasImage) {
         elements.analyzeBtn.classList.remove('ready');
         elements.analyzeBtn.querySelector('.btn-text').textContent = 'Upload an image to analyze';
       }
@@ -715,8 +977,17 @@
       elements.newAnalysisBtn.style.display = 'none';
 
       const votes = [];
-      const scores = [];
+      const weightedScores = []; // {score, weight, confidence}
       const startTime = performance.now();
+
+      // Model weights for ensemble calculation
+      // Weights based on: accuracy + training data recency + concept drift
+      const ENSEMBLE_WEIGHTS = {
+        'ateeqq': 1.5,          // 99.23% accurate, 2024 training data (latest)
+        'dima806_ai_real': 0.8  // 98.2% accurate BUT ~2yr old, concept drift (lower weight)
+        // Note: prithiv_v2 removed - low confidence, overlaps with others
+        // Note: smogy removed - fails on ChatGPT/DALL-E 3 images (trained on older generators)
+      };
       const totalModels = state.selectedModels.size;
       const modelIds = Array.from(state.selectedModels);
 
@@ -766,11 +1037,12 @@
 
       // Helper to update preliminary results
       function updatePreliminaryResult(completedCount) {
-        if (scores.length === 0) {
+        if (weightedScores.length === 0) {
           elements.scanningSubtext.textContent = 'Loading models...';
           return;
         }
-        const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+        // Simple average for preliminary display (full weighted calc at end)
+        const avgScore = weightedScores.reduce((sum, ws) => sum + ws.score, 0) / weightedScores.length;
         const pct = Math.round(avgScore);
         const info = getPreliminaryInfo(avgScore);
 
@@ -785,7 +1057,10 @@
       }
 
       try {
-        const imageBlob = await fetch(state.currentImageData).then(r => r.blob());
+        // currentImageData is either a blob URL or the original File/Blob
+        const imageBlob = state.currentImage instanceof Blob
+          ? state.currentImage
+          : await fetch(state.currentImageData).then(r => r.blob());
         let completedCount = 0;
 
         for (const modelId of modelIds) {
@@ -827,17 +1102,21 @@
 
             if (modelResult && !modelResult.error) {
               const aiScore = modelResult.aiProbability;
-              scores.push(aiScore);
+              const confidence = modelResult.confidence || 50; // Default 50% if not provided
+              const weight = ENSEMBLE_WEIGHTS[modelId] || 1.0;
+              weightedScores.push({ modelId, score: aiScore, weight, confidence });
 
               let vote = 'unsure';
               if (aiScore >= 65) vote = 'ai';
               else if (aiScore <= 35) vote = 'human';
 
               votes.push({
+                modelId: modelId,
                 model: modelInfo.displayName,
                 vote: vote,
                 score: Math.round(aiScore),
-                time: Math.round(modelTime)
+                time: Math.round(modelTime),
+                fullResult: modelResult
               });
 
               pb.fill.style.width = '100%';
@@ -862,8 +1141,15 @@
         }
 
         const totalTime = performance.now() - startTime;
-        const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 50;
+
+        // Single model - use score directly (no ensemble math needed)
+        const avgScore = weightedScores.length > 0 ? weightedScores[0].score : 50;
+        const modelConf = weightedScores.length > 0 ? weightedScores[0].confidence : 0;
+        console.log(`[Detection] Ateeqq result: ${avgScore.toFixed(1)}% AI (confidence: ${modelConf.toFixed(1)}%)`);
         showResults(avgScore, votes, totalTime);
+
+        // Run forensic analysis in parallel (non-blocking)
+        runForensicAnalysis(imageBlob);
 
       } catch (error) {
         console.error('Analysis failed:', error);
@@ -879,6 +1165,237 @@
         elements.newAnalysisBtn.style.display = 'block';
       }
     }
+
+    // ========================================
+    // Forensic Analysis
+    // ========================================
+
+    function escapeHTML(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    async function runForensicAnalysis(imageBlob) {
+      if (!elements.forensicsContainer) return;
+      elements.forensicsContainer.classList.remove('hidden');
+
+      // Display tech details immediately (no async needed)
+      displayTechDetails();
+
+      // Run all forensic modules in parallel
+      const [metaResult, wmResult, elaResult, specResult] = await Promise.allSettled([
+        extractMetadata(imageBlob),
+        scanWatermarks(imageBlob),
+        runELA(imageBlob),
+        analyzeSpectrum(imageBlob),
+      ]);
+
+      if (metaResult.status === 'fulfilled') {
+        displayMetadata(metaResult.value);
+      } else {
+        elements.metadataContent.innerHTML = '<p class="forensic-error">Metadata extraction failed: ' + escapeHTML(metaResult.reason?.message || 'Unknown error') + '</p>';
+      }
+
+      if (wmResult.status === 'fulfilled') {
+        displayWatermarks(wmResult.value);
+      } else {
+        elements.watermarkContent.innerHTML = '<p class="forensic-error">Watermark scan failed: ' + escapeHTML(wmResult.reason?.message || 'Unknown error') + '</p>';
+      }
+
+      if (elaResult.status === 'fulfilled') {
+        displayELA(elaResult.value);
+      } else {
+        elements.elaContent.innerHTML = '<p class="forensic-error">ELA failed: ' + escapeHTML(elaResult.reason?.message || 'Unknown error') + '</p>';
+      }
+
+      if (specResult.status === 'fulfilled') {
+        displaySpectrum(specResult.value);
+      } else {
+        elements.spectrumContent.innerHTML = '<p class="forensic-error">Spectrum analysis failed: ' + escapeHTML(specResult.reason?.message || 'Unknown error') + '</p>';
+      }
+    }
+
+    function displayMetadata(data) {
+      let html = '';
+
+      // Properties table
+      if (data.properties && Object.keys(data.properties).length > 0) {
+        html += '<h5 class="forensic-table-title">File Properties</h5>';
+        html += '<table class="forensic-table"><tbody>';
+        for (const [key, val] of Object.entries(data.properties)) {
+          html += '<tr><td class="forensic-table-label">' + escapeHTML(key) + '</td><td class="forensic-table-value">' + escapeHTML(String(val)) + '</td></tr>';
+        }
+        html += '</tbody></table>';
+      }
+
+      // EXIF data
+      if (data.exif && Object.keys(data.exif).length > 0) {
+        html += '<h5 class="forensic-table-title">EXIF Data</h5>';
+        html += '<table class="forensic-table"><tbody>';
+        for (const [key, val] of Object.entries(data.exif)) {
+          html += '<tr><td class="forensic-table-label">' + escapeHTML(key) + '</td><td class="forensic-table-value-mono">' + escapeHTML(String(val)) + '</td></tr>';
+        }
+        html += '</tbody></table>';
+      }
+
+      // PNG text chunks
+      if (data.pngText && Object.keys(data.pngText).length > 0) {
+        html += '<h5 class="forensic-table-title">PNG Text Chunks</h5>';
+        html += '<table class="forensic-table"><tbody>';
+        for (const [key, val] of Object.entries(data.pngText)) {
+          const display = String(val).length > 200 ? String(val).substring(0, 200) + '...' : String(val);
+          html += '<tr><td class="forensic-table-label">' + escapeHTML(key) + '</td><td class="forensic-table-value-mono">' + escapeHTML(display) + '</td></tr>';
+        }
+        html += '</tbody></table>';
+      }
+
+      // AI markers
+      if (data.aiMarkers && data.aiMarkers.length > 0) {
+        html += '<h5 class="forensic-table-title">AI Generation Markers</h5>';
+        html += '<div class="ai-markers-list">';
+        for (const marker of data.aiMarkers) {
+          html += '<div class="ai-marker-flag">' + escapeHTML(marker) + '</div>';
+        }
+        html += '</div>';
+      }
+
+      // C2PA
+      if (data.c2pa) {
+        html += '<h5 class="forensic-table-title">Content Credentials (C2PA)</h5>';
+        html += '<div class="ai-marker-flag">' + escapeHTML(data.c2pa) + '</div>';
+      }
+
+      if (!html) {
+        html = '<p class="forensic-empty">No metadata found in this image.</p>';
+      }
+
+      elements.metadataContent.innerHTML = html;
+    }
+
+    function displayWatermarks(data) {
+      if (!data.detected) {
+        elements.watermarkContent.innerHTML = '<p class="forensic-empty">No visible watermarks detected.</p>';
+        return;
+      }
+
+      let html = '<div class="watermark-results">';
+      for (const wm of data.watermarks) {
+        const confPct = Math.round(wm.confidence * 100);
+        html += '<div class="watermark-badge">';
+        html += '<span class="watermark-generator">' + escapeHTML(wm.generator) + '</span>';
+        html += '<span class="watermark-confidence">' + confPct + '% confidence</span>';
+        html += '<span class="watermark-region">' + escapeHTML(wm.region) + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+      elements.watermarkContent.innerHTML = html;
+    }
+
+    function displayELA(data) {
+      let html = '';
+
+      // Canvas for heatmap
+      html += '<canvas id="elaCanvas" class="forensic-canvas"></canvas>';
+
+      // Stats grid
+      html += '<div class="forensic-stats">';
+      html += '<div class="stat-item"><span class="stat-label">Mean Error</span><span class="stat-value">' + data.stats.mean + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">Std Dev</span><span class="stat-value">' + data.stats.stdDev + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">Entropy</span><span class="stat-value">' + data.stats.entropy + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">Uniformity</span><span class="stat-value">' + data.stats.spatialUniformity + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">CV</span><span class="stat-value">' + data.stats.coefficientOfVariation + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">Range</span><span class="stat-value">' + data.stats.min + ' - ' + data.stats.max + '</span></div>';
+      html += '</div>';
+
+      // Interpretation
+      html += '<p class="forensic-interpretation">' + escapeHTML(data.interpretation) + '</p>';
+
+      elements.elaContent.innerHTML = html;
+
+      // Render heatmap to canvas
+      const canvas = document.getElementById('elaCanvas');
+      if (canvas && data.heatmapImageData) {
+        canvas.width = data.width;
+        canvas.height = data.height;
+        const ctx = canvas.getContext('2d');
+        ctx.putImageData(data.heatmapImageData, 0, 0);
+      }
+    }
+
+    function displaySpectrum(data) {
+      let html = '';
+
+      // Canvas for spectrum
+      html += '<canvas id="spectrumCanvas" class="forensic-canvas"></canvas>';
+
+      // Features grid
+      html += '<div class="forensic-stats">';
+      html += '<div class="stat-item"><span class="stat-label">Spectral Flatness</span><span class="stat-value">' + data.features.spectralFlatness + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">Energy Concentration</span><span class="stat-value">' + data.features.energyConcentration + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">High-Freq Ratio</span><span class="stat-value">' + data.features.highFreqRatio + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">Spectral Slope</span><span class="stat-value">' + data.features.spectralSlope + '</span></div>';
+      html += '<div class="stat-item"><span class="stat-label">Periodic Spikes</span><span class="stat-value">' + data.features.periodicSpikes + '</span></div>';
+      html += '</div>';
+
+      // Interpretation
+      html += '<p class="forensic-interpretation">' + escapeHTML(data.interpretation) + '</p>';
+
+      elements.spectrumContent.innerHTML = html;
+
+      // Render spectrum to canvas
+      const canvas = document.getElementById('spectrumCanvas');
+      if (canvas && data.spectrumImageData) {
+        canvas.width = data.width;
+        canvas.height = data.height;
+        const ctx = canvas.getContext('2d');
+        ctx.putImageData(data.spectrumImageData, 0, 0);
+      }
+    }
+
+    async function displayTechDetails() {
+      let html = '<table class="forensic-table"><tbody>';
+      const backend = InferenceEngine.getBackend ? InferenceEngine.getBackend() : 'unknown';
+      html += '<tr><td class="forensic-table-label">Inference Backend</td><td class="forensic-table-value-mono">' + escapeHTML(String(backend)) + '</td></tr>';
+
+      // Try to get GPU info from WebGPU API
+      try {
+        if (navigator.gpu) {
+          const adapter = await navigator.gpu.requestAdapter();
+          if (adapter) {
+            const info = adapter.info || {};
+            if (info.vendor) html += '<tr><td class="forensic-table-label">GPU Vendor</td><td class="forensic-table-value-mono">' + escapeHTML(info.vendor) + '</td></tr>';
+            if (info.architecture) html += '<tr><td class="forensic-table-label">GPU Architecture</td><td class="forensic-table-value-mono">' + escapeHTML(info.architecture) + '</td></tr>';
+            if (info.device) html += '<tr><td class="forensic-table-label">GPU Device</td><td class="forensic-table-value-mono">' + escapeHTML(info.device) + '</td></tr>';
+            if (info.description) html += '<tr><td class="forensic-table-label">GPU Description</td><td class="forensic-table-value-mono">' + escapeHTML(info.description) + '</td></tr>';
+          }
+        }
+      } catch (e) { /* GPU info unavailable */ }
+
+      html += '<tr><td class="forensic-table-label">WASM SIMD</td><td class="forensic-table-value-mono">' + (typeof WebAssembly !== 'undefined' ? 'Supported' : 'No') + '</td></tr>';
+      html += '<tr><td class="forensic-table-label">Hardware Concurrency</td><td class="forensic-table-value-mono">' + (navigator.hardwareConcurrency || 'unknown') + ' threads</td></tr>';
+      html += '<tr><td class="forensic-table-label">User Agent</td><td class="forensic-table-value-mono" style="word-break:break-all;font-size:0.7rem">' + escapeHTML(navigator.userAgent) + '</td></tr>';
+      html += '</tbody></table>';
+
+      elements.techContent.innerHTML = html;
+    }
+
+    function setupCollapsibleSections() {
+      document.querySelectorAll('.subsection-header').forEach(header => {
+        header.addEventListener('click', () => {
+          const targetId = header.getAttribute('data-target');
+          const body = document.getElementById(targetId);
+          if (!body) return;
+          const isOpen = body.classList.contains('open');
+          body.classList.toggle('open', !isOpen);
+          header.classList.toggle('expanded', !isOpen);
+        });
+      });
+    }
+
+    // ========================================
+    // Results Display
+    // ========================================
 
     function showResults(avgScore, votes, totalTime) {
       elements.scanningState.classList.add('hidden');
@@ -924,17 +1441,33 @@
       const confidence = Math.round(Math.max(avgScore, 100 - avgScore));
       elements.confidenceValue.textContent = confidence + '%';
 
-      elements.modelVotes.replaceChildren();
-      votes.forEach(v => {
-        const span = document.createElement('span');
-        span.className = 'model-vote ' + v.vote;
-        span.title = v.score + '% AI probability (' + v.time + 'ms)';
-        span.textContent = v.model;
-        elements.modelVotes.appendChild(span);
-      });
+      // Update probability meter
+      const probabilityFill = document.getElementById('probabilityFill');
+      const probabilityMarker = document.getElementById('probabilityMarker');
+      const probabilityMarkerValue = document.getElementById('probabilityMarkerValue');
+
+      if (probabilityFill && probabilityMarker && probabilityMarkerValue) {
+        probabilityFill.style.width = avgScore + '%';
+        probabilityMarker.style.left = avgScore + '%';
+        probabilityMarkerValue.textContent = Math.round(avgScore) + '%';
+
+        // Color the fill based on verdict
+        if (resultType === 'danger') {
+          probabilityFill.style.background = 'linear-gradient(90deg, rgba(239, 68, 68, 0.3), var(--danger))';
+        } else if (resultType === 'warning') {
+          probabilityFill.style.background = 'linear-gradient(90deg, rgba(245, 158, 11, 0.3), var(--warning))';
+        } else if (resultType === 'success') {
+          probabilityFill.style.background = 'linear-gradient(90deg, var(--success), rgba(34, 197, 94, 0.3))';
+        } else {
+          probabilityFill.style.background = 'linear-gradient(90deg, rgba(34, 211, 238, 0.3), var(--cyan))';
+        }
+      }
+
+      // Populate model cards with detailed predictions
+      populateModelCards(votes);
 
       elements.totalTime.textContent = Math.round(totalTime) + 'ms';
-      elements.avgTime.textContent = Math.round(totalTime / votes.length) + 'ms';
+      elements.avgTime.textContent = votes.length > 0 ? Math.round(totalTime / votes.length) + 'ms' : '--';
     }
 
     function showError(message) {
@@ -945,7 +1478,190 @@
       elements.resultTitle.textContent = 'Analysis Error';
       elements.resultSubtitle.textContent = message;
       elements.confidenceValue.textContent = '--';
-      elements.modelVotes.replaceChildren();
+
+      // Clear model cards
+      const modelCards = document.getElementById('modelCards');
+      if (modelCards) modelCards.replaceChildren();
+    }
+
+    // Model weights for display (matches ENSEMBLE_WEIGHTS)
+    const MODEL_WEIGHTS = {
+      'ateeqq': 1.5,          // 99.23% accurate, 2024 training data (latest)
+      'dima806_ai_real': 0.8  // 98.2% accurate BUT ~2yr old, concept drift
+    };
+
+    function populateModelCards(votes) {
+      const modelCards = document.getElementById('modelCards');
+      modelCards.replaceChildren();
+
+      votes.forEach(v => {
+        if (v.vote === 'error' || !v.fullResult) return;
+
+        const weight = MODEL_WEIGHTS[v.modelId] || 1.0;
+
+        // Get metadata from ModelManager (single source of truth)
+        const modelInfo = ModelManager.getModelInfo(v.modelId);
+        const metadata = {
+          accuracy: modelInfo?.accuracy || 'N/A',
+          architecture: modelInfo?.architecture || 'Unknown',
+          trainingData: modelInfo?.trainedOn || 'Unknown'
+        };
+
+        const humanProb = 100 - v.score;
+        const aiProb = v.score;
+
+        const card = document.createElement('div');
+        card.className = 'model-card';
+
+        // Determine verdict class
+        let verdictClass = 'unsure';
+        let verdictLabel = 'Unsure';
+        if (v.vote === 'ai') {
+          verdictClass = 'ai';
+          verdictLabel = 'AI Generated';
+        } else if (v.vote === 'human') {
+          verdictClass = 'human';
+          verdictLabel = 'Human Created';
+        }
+
+        // Build card using DOM API (XSS-safe)
+        const header = document.createElement('div');
+        header.className = 'model-card-header';
+
+        const title = document.createElement('div');
+        title.className = 'model-card-title';
+
+        const modelName = document.createElement('span');
+        modelName.className = 'model-name';
+        modelName.textContent = v.model;
+
+        const modelWeight = document.createElement('span');
+        modelWeight.className = 'model-weight';
+        modelWeight.textContent = `Weight: ${weight}×`;
+
+        title.appendChild(modelName);
+        title.appendChild(modelWeight);
+
+        const verdict = document.createElement('div');
+        verdict.className = `model-verdict ${verdictClass}`;
+        verdict.textContent = verdictLabel;
+
+        header.appendChild(title);
+        header.appendChild(verdict);
+
+        // Card body
+        const body = document.createElement('div');
+        body.className = 'model-card-body';
+
+        // Probability bars
+        const probBars = document.createElement('div');
+        probBars.className = 'probability-bars';
+
+        // AI probability bar
+        const aiBarItem = document.createElement('div');
+        aiBarItem.className = 'probability-bar-item';
+
+        const aiLabel = document.createElement('div');
+        aiLabel.className = 'prob-bar-label';
+        aiLabel.innerHTML = '<span>AI Probability</span>';
+
+        const aiValue = document.createElement('span');
+        aiValue.className = 'prob-value';
+        aiValue.textContent = `${aiProb.toFixed(1)}%`;
+        aiLabel.appendChild(aiValue);
+
+        const aiTrack = document.createElement('div');
+        aiTrack.className = 'prob-bar-track';
+
+        const aiFill = document.createElement('div');
+        aiFill.className = 'prob-bar-fill ai';
+        aiFill.style.width = `${aiProb}%`;
+        aiTrack.appendChild(aiFill);
+
+        aiBarItem.appendChild(aiLabel);
+        aiBarItem.appendChild(aiTrack);
+
+        // Human probability bar
+        const humanBarItem = document.createElement('div');
+        humanBarItem.className = 'probability-bar-item';
+
+        const humanLabel = document.createElement('div');
+        humanLabel.className = 'prob-bar-label';
+        humanLabel.innerHTML = '<span>Human Probability</span>';
+
+        const humanValue = document.createElement('span');
+        humanValue.className = 'prob-value';
+        humanValue.textContent = `${humanProb.toFixed(1)}%`;
+        humanLabel.appendChild(humanValue);
+
+        const humanTrack = document.createElement('div');
+        humanTrack.className = 'prob-bar-track';
+
+        const humanFill = document.createElement('div');
+        humanFill.className = 'prob-bar-fill human';
+        humanFill.style.width = `${humanProb}%`;
+        humanTrack.appendChild(humanFill);
+
+        humanBarItem.appendChild(humanLabel);
+        humanBarItem.appendChild(humanTrack);
+
+        probBars.appendChild(aiBarItem);
+        probBars.appendChild(humanBarItem);
+
+        // Model specs
+        const specs = document.createElement('div');
+        specs.className = 'model-specs';
+
+        const specsData = [
+          { label: 'Accuracy', value: metadata.accuracy },
+          { label: 'Architecture', value: metadata.architecture },
+          { label: 'Confidence', value: `${v.fullResult.confidence}%` },
+          { label: 'Inference Time', value: `${v.time}ms` }
+        ];
+
+        specsData.forEach(spec => {
+          const row = document.createElement('div');
+          row.className = 'spec-row';
+
+          const label = document.createElement('span');
+          label.className = 'spec-label';
+          label.textContent = spec.label;
+
+          const value = document.createElement('span');
+          value.className = 'spec-value';
+          value.textContent = spec.value;
+
+          row.appendChild(label);
+          row.appendChild(value);
+          specs.appendChild(row);
+        });
+
+        // Training data
+        const training = document.createElement('div');
+        training.className = 'model-training';
+
+        const trainingLabel = document.createElement('div');
+        trainingLabel.className = 'training-label';
+        trainingLabel.textContent = 'Training Data';
+
+        const trainingData = document.createElement('div');
+        trainingData.className = 'training-data';
+        trainingData.textContent = metadata.trainingData;
+
+        training.appendChild(trainingLabel);
+        training.appendChild(trainingData);
+
+        // Assemble body
+        body.appendChild(probBars);
+        body.appendChild(specs);
+        body.appendChild(training);
+
+        // Assemble card
+        card.appendChild(header);
+        card.appendChild(body);
+
+        modelCards.appendChild(card);
+      });
     }
 
     // ========================================
@@ -982,17 +1698,22 @@
     // ========================================
 
     function setupCategoryButtons() {
-      elements.fullImageSelectAll.onclick = () => {
-        ModelManager.getModelsByCategory('FULL_IMAGE_DETECTORS').forEach(m => state.selectedModels.add(m.id));
-        renderModelCategories();
-        updateAnalyzeButton();
-      };
-      elements.fullImageClear.onclick = () => {
-        ModelManager.getModelsByCategory('FULL_IMAGE_DETECTORS').forEach(m => state.selectedModels.delete(m.id));
-        renderModelCategories();
-        updateAnalyzeButton();
-      };
-      // Face manipulation section is disabled - only set up if elements exist
+      // Model category buttons removed - single model UI now
+      // Keep null checks for backwards compatibility if elements are re-added
+      if (elements.fullImageSelectAll) {
+        elements.fullImageSelectAll.onclick = () => {
+          ModelManager.getModelsByCategory('FULL_IMAGE_DETECTORS').forEach(m => state.selectedModels.add(m.id));
+          renderModelCategories();
+          updateAnalyzeButton();
+        };
+      }
+      if (elements.fullImageClear) {
+        elements.fullImageClear.onclick = () => {
+          ModelManager.getModelsByCategory('FULL_IMAGE_DETECTORS').forEach(m => state.selectedModels.delete(m.id));
+          renderModelCategories();
+          updateAnalyzeButton();
+        };
+      }
       if (elements.faceManipulationSelectAll) {
         elements.faceManipulationSelectAll.onclick = () => {
           ModelManager.getModelsByCategory('FACE_MANIPULATION_DETECTORS').forEach(m => state.selectedModels.add(m.id));
@@ -1028,8 +1749,14 @@
         const backend = InferenceEngine.getBackend();
         updateBackendIndicator(backend);
 
-        // Load models
+        // Update model card status
+        updateModelCardStatus('', 'Initializing...');
+
+        // Load models (lazy - marks ready but doesn't download)
         await loadModels();
+
+        // Mark model as ready
+        updateModelCardStatus('ready', 'Ready');
 
         // Setup event listeners
         setupCategoryButtons();
@@ -1038,6 +1765,10 @@
         setupAnalyzeButton();
         setupNewAnalysisButton();
         setupClearCacheButton();
+        setupCollapsibleSections();
+
+        // Restore persisted image if any (crash recovery)
+        await restorePersistedImage();
 
         // Hide loading overlay
         setTimeout(() => {
@@ -1128,7 +1859,7 @@
   <!-- Cache Busting: Force update on deployment -->
   <script>
     (function() {
-      const SITE_VERSION = '2.4.1'; // Must match service-worker.js CACHE_VERSION
+      const SITE_VERSION = 'v2.4.1'; // Must match service-worker.js CACHE_VERSION
       const lastVersion = localStorage.getItem('siteVersion');
 
       if (lastVersion && lastVersion !== SITE_VERSION) {

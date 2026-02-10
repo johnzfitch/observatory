@@ -68,7 +68,15 @@ export async function loadApp(page, url = '/') {
  */
 export async function waitForOnnxInit(page, timeout = 10000) {
   await page.waitForFunction(
-    () => window.ort?.env?.wasm?.numThreads !== undefined,
+    () => window.__ONNX_RUNTIME_CONFIG__ !== undefined,
+    { timeout }
+  );
+  await page.evaluate(async () => {
+    const { init } = await import('/src/core/ort-runtime.js');
+    await init();
+  });
+  await page.waitForFunction(
+    () => window.ort?.InferenceSession !== undefined,
     { timeout }
   );
 }
@@ -81,7 +89,10 @@ export async function waitForOnnxInit(page, timeout = 10000) {
 export async function waitForModels(page, timeout = 10000) {
   await page.waitForFunction(
     () => {
-      // Check if model categories are loaded (UI uses .model-category, not .model-card)
+      // Check if model info card is loaded (new single-model UI)
+      const modelInfoCard = document.querySelector('.model-info-card');
+      if (modelInfoCard) return true;
+      // Fallback: Check if model categories are loaded (legacy multi-model UI)
       const modelCategories = document.querySelectorAll('.model-category');
       return modelCategories.length > 0;
     },

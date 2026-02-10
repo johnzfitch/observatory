@@ -36,7 +36,7 @@ export default defineConfig({
 
   // Global settings
   use: {
-    baseURL: 'http://localhost:8000',
+    baseURL: 'http://localhost:8918',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -52,6 +52,41 @@ export default defineConfig({
 
   // Browser projects
   projects: [
+    // Helium with GPU - connect to running instance
+    // Start Helium first: helium --remote-debugging-port=9222
+    {
+      name: 'helium-gpu',
+      use: {
+        ...devices['Desktop Chrome'],
+        // Connect via CDP to running browser
+        launchOptions: undefined,
+      },
+      // Use custom fixture to connect via CDP
+    },
+
+    // Helium launched by Playwright (falls back to SwiftShader)
+    {
+      name: 'helium',
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: undefined,
+        headless: false,
+        launchOptions: {
+          executablePath: process.env.HOME + '/.local/helium/helium.AppImage',
+          args: [
+            '--ozone-platform=wayland',
+            '--use-gl=egl',
+            '--enable-gpu',
+            '--ignore-gpu-blocklist',
+            '--enable-features=Vulkan,VulkanFromANGLE,UseSkiaRenderer,WebGPU',
+            '--enable-unsafe-webgpu',
+            '--no-sandbox',
+            '--disable-web-security',
+          ]
+        }
+      },
+    },
+
     {
       name: 'chromium-webgpu',
       use: {
@@ -83,12 +118,34 @@ export default defineConfig({
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
+
+    // Mobile device emulation for testing
+    {
+      name: 'mobile-iphone',
+      use: {
+        ...devices['iPhone 14 Pro'],
+        // iOS uses WebKit which supports WebGPU in Safari 26
+      },
+    },
+
+    {
+      name: 'mobile-android',
+      use: {
+        ...devices['Pixel 7'],
+        launchOptions: {
+          args: [
+            '--enable-unsafe-webgpu',
+            '--enable-features=Vulkan'
+          ]
+        }
+      },
+    },
   ],
 
   // Local dev server
   webServer: {
-    command: 'python3 -m http.server 8000',
-    url: 'http://localhost:8000',
+    command: 'python3 -m http.server 8918',
+    url: 'http://localhost:8918',
     reuseExistingServer: !process.env.CI,
     timeout: 10000,
   },

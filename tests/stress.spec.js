@@ -97,6 +97,16 @@ test.describe('stress - Canvas Animation', () => {
     // Wait for animation to build up
     await page.waitForTimeout(3000);
 
+    const supportsTouchEvent = await page.evaluate(
+      () => typeof TouchEvent !== 'undefined' && typeof Touch !== 'undefined'
+    );
+    const supportsPointerEvent = await page.evaluate(
+      () => typeof PointerEvent !== 'undefined'
+    );
+    if (!supportsTouchEvent && !supportsPointerEvent) {
+      test.skip(true, 'TouchEvent and PointerEvent not supported');
+    }
+
     // Get initial canvas state
     const initialHash = await page.evaluate(() => {
       const canvas = document.getElementById('matrixRain');
@@ -107,10 +117,25 @@ test.describe('stress - Canvas Animation', () => {
 
     // Simulate touch events
     await page.evaluate(() => {
-      const event = new TouchEvent('touchstart', {
-        touches: [new Touch({ identifier: 0, target: document.body, clientX: 100, clientY: 100 })]
-      });
-      document.dispatchEvent(event);
+      if (typeof TouchEvent !== 'undefined' && typeof Touch !== 'undefined') {
+        const event = new TouchEvent('touchstart', {
+          touches: [new Touch({ identifier: 0, target: document.body, clientX: 100, clientY: 100 })],
+          bubbles: true,
+          cancelable: true
+        });
+        document.dispatchEvent(event);
+        return;
+      }
+      if (typeof PointerEvent !== 'undefined') {
+        const event = new PointerEvent('pointerdown', {
+          pointerType: 'touch',
+          clientX: 100,
+          clientY: 100,
+          bubbles: true,
+          cancelable: true
+        });
+        document.dispatchEvent(event);
+      }
     });
 
     await page.waitForTimeout(500);

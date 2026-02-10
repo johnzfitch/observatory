@@ -16,18 +16,30 @@
  */
 const MODEL_CATEGORIES = {
   FULL_IMAGE_DETECTORS: [
-    { id: 'ateeqq', displayName: 'Ateeqq AI vs Human', accuracy: '99.23%', estimatedMemory: 500, trainedOn: 'MJ6.1/Flux1.1/SD3.5/GPT-4o' },
-    { id: 'dima806_ai_real', displayName: 'Dima806 AI vs Real', accuracy: '98.2%', estimatedMemory: 450, trainedOn: 'SD/MJ/DALL-E' },
-    { id: 'prithiv_v2', displayName: 'Prithiv Deepfake v2', accuracy: '92.1%', estimatedMemory: 520, trainedOn: 'SD/MJ' },
-    { id: 'smogy', displayName: 'SMOGY AI Detector', accuracy: '98.2%', estimatedMemory: 480, trainedOn: 'SD/MJ/DALL-E' }
+    { id: 'ateeqq', displayName: 'Ateeqq AI vs Human', accuracy: '99.23%', architecture: 'ViT-B/16', estimatedMemory: 500, trainedOn: 'Midjourney 6.1, Flux 1.1, DALL-E 3, Stable Diffusion 3.5, GPT-4o, Ideogram 2.0' },
+    // Dima806: Disabled - ~2 years old, concept drift, replaced by Ateeqq
+    { id: 'dima806_ai_real', displayName: 'Dima806 AI vs Real', accuracy: '98.2%', architecture: 'ViT-Base', estimatedMemory: 450, trainedOn: 'SD/MJ/DALL-E', disabled: true },
+    // Prithiv: Disabled - low confidence, overlaps with other models
+    { id: 'prithiv_v2', displayName: 'Prithiv Deepfake v2', accuracy: '92.1%', architecture: 'ResNet-50', estimatedMemory: 520, trainedOn: 'Stable Diffusion 2.1, DALL-E 2, Midjourney 5', disabled: true },
+    // SMOGY: Disabled - fails on ChatGPT/DALL-E 3 images (only trained on older generators)
+    { id: 'smogy', displayName: 'SMOGY AI Detector', accuracy: '98.2%', architecture: 'Swin Transformer', estimatedMemory: 480, trainedOn: 'Stable Diffusion 1.5, Stable Diffusion 2.1, DALL-E 2, Midjourney 5.2', disabled: true }
   ],
   FACE_MANIPULATION_DETECTORS: []
 };
 
 /**
- * Memory threshold (2GB in MB)
+ * Detect iOS device (strict memory limits)
  */
-const MEMORY_THRESHOLD_MB = 2048;
+const isIOSDevice = () => {
+  if (typeof navigator === 'undefined') return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
+
+/**
+ * Memory threshold - iOS has stricter limits (~1GB vs 2GB desktop)
+ */
+const MEMORY_THRESHOLD_MB = isIOSDevice() ? 1024 : 2048;
 
 /**
  * Default batch loading concurrency
@@ -155,6 +167,16 @@ export async function loadModel(modelId, options = {}) {
     modelStatus.set(modelId, ModelStatus.LOADING);
     onStatusChange({ modelId, status: ModelStatus.LOADING });
 
+    // Check connection quality for user feedback
+    const connection = navigator.connection;
+    if (connection) {
+      const effectiveType = connection.effectiveType;
+      if (effectiveType === 'slow-2g' || effectiveType === '2g') {
+        console.warn(`[ModelManager] Slow connection detected: ${effectiveType}`);
+        onStatusChange({ modelId, status: 'loading-slow', connectionType: effectiveType });
+      }
+    }
+
     // Simulate progress updates during load
     onProgress({ modelId, percent: 10, loaded: 0.1, total: 1 });
 
@@ -183,6 +205,11 @@ export async function loadModel(modelId, options = {}) {
         `Memory usage (${usedMemoryMB}MB) exceeds threshold (${MEMORY_THRESHOLD_MB}MB). ` +
         `Consider unloading unused models.`
       );
+    }
+
+    // iOS-specific memory warning at lower threshold
+    if (isIOSDevice() && usedMemoryMB > 800) {
+      console.warn(`[ModelManager] iOS memory usage high: ${usedMemoryMB}MB. Risk of page crash.`);
     }
 
     // Store loaded module
@@ -394,6 +421,38 @@ export function isModelLoaded(modelId) {
  */
 export function getModelStatus(modelId) {
   return modelStatus.get(modelId) || ModelStatus.UNLOADED;
+}
+
+/**
+ * Check if all specified models are loaded and ready
+ * @param {string[]} modelIds - Array of model IDs to check
+ * @returns {boolean} True if all models are ready
+ */
+export function areModelsReady(modelIds) {
+  return modelIds.every(id => isModelLoaded(id));
+}
+
+/**
+ * Get loading progress for multiple models
+ * @param {string[]} modelIds - Array of model IDs to check
+ * @returns {{ready: number, loading: number, total: number, allReady: boolean}}
+ */
+export function getModelsLoadingProgress(modelIds) {
+  let ready = 0;
+  let loading = 0;
+
+  for (const id of modelIds) {
+    const status = getModelStatus(id);
+    if (status === ModelStatus.READY) ready++;
+    else if (status === ModelStatus.LOADING) loading++;
+  }
+
+  return {
+    ready,
+    loading,
+    total: modelIds.length,
+    allReady: ready === modelIds.length
+  };
 }
 
 /**

@@ -22,6 +22,20 @@
   console.log('[ONNX-Init] Pre-configuring ONNX Runtime environment...');
 
   // ========================================
+  // iOS/Mobile Detection (Critical for memory management)
+  // ========================================
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isMobile = isIOS || /Android/i.test(navigator.userAgent);
+  const isLowMemory = isMobile || navigator.deviceMemory < 4;
+
+  if (isIOS) {
+    console.log('[ONNX-Init] iOS detected - applying memory-safe settings');
+  } else if (isMobile) {
+    console.log('[ONNX-Init] Mobile device detected - applying memory-safe settings');
+  }
+
+  // ========================================
   // IndexedDB Model Cache (runs before fetch override)
   // ========================================
 
@@ -215,33 +229,30 @@
   // ========================================
   // ONNX Runtime Web Configuration
   // ========================================
-  
-  // Create the global ort object if it doesn't exist
-  window.ort = window.ort || {};
-  window.ort.env = window.ort.env || {};
-  window.ort.env.wasm = window.ort.env.wasm || {};
 
-  // Suppress ONNX Runtime warnings (they're noisy but harmless)
-  window.ort.env.logLevel = 'error';
-  
-  // Set WASM paths to local vendor directory
-  // NOTE: Transformers.js has its own bundled ONNX Runtime
-  // Setting wasmPaths causes version mismatches and buffer errors
-  // The WASM files should be in /vendor/ alongside transformers.js
-  const WASM_BASE_PATH = '/vendor/';
-  
-  // Threading configuration
-  // Disable multi-threading initially as it can cause issues
-  window.ort.env.wasm.numThreads = 1;
-  
-  // SIMD configuration
-  // Enable SIMD if supported (significant performance boost)
-  // Set to false if you see SIMD-related errors
-  window.ort.env.wasm.simd = true;
-  
-  // Proxy configuration (for Web Worker support)
-  // Enable if you want WASM to run in a Web Worker
-  window.ort.env.wasm.proxy = false;
+  // CRITICAL FIX: Do NOT pre-create window.ort here!
+  // ort-runtime.js checks for typeof window.ort === 'undefined' to decide whether
+  // to load the actual ONNX Runtime library. If we pre-create it here, the library
+  // never loads and InferenceSession is never available.
+  //
+  // Instead, we'll set up a configuration object that ort-runtime.js can use AFTER
+  // loading the actual ONNX Runtime library.
+  window.__ONNX_RUNTIME_CONFIG__ = {
+    wasm: {
+      // CRITICAL: Keep threads at 1 on mobile to avoid memory explosion
+      // Each thread gets its own WASM instance memory
+      numThreads: isLowMemory ? 1 : 4,
+      simd: true,
+      proxy: false
+    },
+    logLevel: 'error',  // Suppress ONNX Runtime warnings
+    // Expose detection flags for other modules
+    isIOS: isIOS,
+    isMobile: isMobile,
+    isLowMemory: isLowMemory
+  };
+  // WASM files should be in /vendor/ alongside transformers.js.
+  // ort-runtime.js applies this config after loading the runtime.
   
   // ========================================
   // Transformers.js Compatibility
@@ -296,12 +307,18 @@
         return;
       }
       
-      // Try to get a device to verify full support
-      const device = await adapter.requestDevice();
-      if (device) {
+      // On mobile, just check adapter exists (avoid device allocation)
+      if (isLowMemory) {
         window.__WEBGPU_AVAILABLE__ = true;
-        console.log('[ONNX-Init] WebGPU is available');
-        device.destroy(); // Clean up test device
+        console.log('[ONNX-Init] WebGPU adapter found (skipping device test on mobile)');
+      } else {
+        // On desktop, verify full support by creating a device
+        const device = await adapter.requestDevice();
+        if (device) {
+          window.__WEBGPU_AVAILABLE__ = true;
+          console.log('[ONNX-Init] WebGPU is available');
+          device.destroy(); // Clean up test device
+        }
       }
       
     } catch (e) {
@@ -314,12 +331,13 @@
   // ========================================
   // Debug Logging
   // ========================================
-  
+
   console.log('[ONNX-Init] Configuration complete:');
   console.log('  WASM files location: /vendor/ (alongside transformers.js)');
-  console.log('  Threads:', window.ort.env.wasm.numThreads);
-  console.log('  SIMD:', window.ort.env.wasm.simd);
+  console.log('  Threads (pending):', window.__ONNX_RUNTIME_CONFIG__.wasm.numThreads);
+  console.log('  SIMD (pending):', window.__ONNX_RUNTIME_CONFIG__.wasm.simd);
   console.log('  Local models:', window.__TRANSFORMERS_ENV_PRESET__.localModelPath);
+  console.log('  Note: window.ort will be loaded by ort-runtime.js');
   
   // ========================================
   // Verification Helper
@@ -334,15 +352,15 @@
       webgpuAvailable: window.__WEBGPU_AVAILABLE__
     };
 
-    // Check if WASM files are accessible in /vendor/
+    // Check if WASM files are accessible in /vendor/onnxruntime-1.21.0/
     const wasmFiles = [
-      'ort-wasm.wasm',
-      'ort-wasm-simd.wasm'
+      'ort-wasm-simd-threaded.jsep.wasm',  // WebGPU/JSEP backend
+      'ort-wasm-simd-threaded.wasm'         // WASM fallback
     ];
 
     for (const file of wasmFiles) {
       try {
-        const response = await fetch('/vendor/' + file, { method: 'HEAD' });
+        const response = await fetch('/vendor/onnxruntime-1.21.0/' + file, { method: 'HEAD' });
         results.wasmFilesInVendor[file] = response.ok;
       } catch (e) {
         results.wasmFilesInVendor[file] = false;
@@ -443,7 +461,8 @@
 
   // Smart pre-warm: only fetch models the user has previously used
   // Respects metered connections and only runs when idle
-  if ('requestIdleCallback' in window) {
+  // CRITICAL: Skip on mobile/iOS to prevent memory crashes
+  if ('requestIdleCallback' in window && !isLowMemory) {
     requestIdleCallback(() => {
       const usedModels = window.__ModelCache__.getUsedModels();
 
@@ -466,6 +485,8 @@
         });
       }, 5000); // Wait 5s to avoid competing with page load
     }, { timeout: 15000 });
+  } else if (isLowMemory) {
+    console.log('[ModelCache] Low-memory device detected, skipping background pre-warm');
   }
 
 })();

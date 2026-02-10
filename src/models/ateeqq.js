@@ -42,9 +42,12 @@ export async function predict(imageSource) {
 
   const results = await session.run({ pixel_values: tensor });
   const logits = results.logits?.data ?? Object.values(results)[0].data;
-  const probs = softmax(Array.from(logits));
+  const logitsArray = Array.from(logits);
+  const probs = softmax(logitsArray);
 
-  // Label order: {"0": "ai", "1": "hum"}
+  // Debug logs removed to prevent memory issues (was causing 170MB+ console logs)
+
+  // Model config id2label: {"0": "ai", "1": "hum"}
   const aiProbability = probs[0];
   const confidence = Math.abs(aiProbability - 0.5) * 2;
 
@@ -56,7 +59,8 @@ export async function predict(imageSource) {
     verdict: aiProbability >= 0.5 ? 'AI' : 'REAL',
     confidence: Math.round(confidence * 1000) / 10,
     detectedLabel: aiProbability >= 0.5 ? 'ai' : 'hum',
-    rawResults: probs
+    rawResults: probs,
+    _debug_logits: logitsArray  // Debug: keep raw logits for verification
   };
 }
 

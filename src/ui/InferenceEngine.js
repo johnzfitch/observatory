@@ -51,10 +51,10 @@ function createPLimit(concurrency) {
 
 // Model priority order (fastest first for immediate UX feedback)
 const MODEL_PRIORITY = [
-  'ateeqq',          // ~32ms
-  'dima806_ai_real', // ~46ms
-  'prithiv_v2',      // ~56ms
-  'smogy'            // ~83ms
+  'ateeqq',          // ~32ms (SigLIP) - Latest training data (2024)
+  'dima806_ai_real'  // ~45ms (ViT) - Older model, provides historical coverage
+  // Note: prithiv_v2 removed - low confidence, overlaps with other models
+  // Note: smogy removed - fails on ChatGPT/DALL-E 3 (trained on older generators only)
 ];
 
 /**
@@ -106,13 +106,30 @@ const VERDICT_THRESHOLDS = {
   HUMAN_CREATED: 0.0       // < 30%
 };
 
+// Detect iOS and capabilities
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+// Detect iOS version (iOS 26+ has WebGPU)
+const iOSVersion = (() => {
+  const match = navigator.userAgent.match(/OS (\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+})();
+
+// Detect modern iPhone (15 Pro+ required for WebGPU)
+const isModernIPhone = /iPhone1[5-9]|iPhone[2-9]\d/.test(navigator.userAgent);
+
 // Engine state
 let engineState = {
   initialized: false,
   backend: null,
   webgpuAvailable: false,
   currentInference: null,
-  abortController: null
+  abortController: null,
+  isIOS: isIOS,
+  iOSVersion: iOSVersion,
+  // iOS 26+ with WebGPU can handle parallel - legacy iOS is memory constrained
+  memoryConstrained: isIOS && (iOSVersion < 26 || !isModernIPhone)
 };
 
 /**
@@ -211,17 +228,21 @@ export async function runInference(imageSource, modelIds, options = {}) {
     await init();
   }
 
-  // Default options
+  // Default options - force sequential on iOS to prevent memory crashes
   const opts = {
-    parallel: true,
-    maxConcurrency: 4,
-    timeout: 30000,
+    parallel: !engineState.memoryConstrained,  // Sequential on iOS
+    maxConcurrency: engineState.memoryConstrained ? 1 : 4,
+    timeout: 120000, // 2 minutes for CPU inference
     onModelStart: null,
     onModelComplete: null,
     onProgress: null,
     abortSignal: null,
     ...options
   };
+
+  if (engineState.memoryConstrained) {
+    console.log('[InferenceEngine] Memory-constrained device detected - using sequential mode');
+  }
 
   // Create abort controller for this inference
   engineState.abortController = new AbortController();
@@ -281,6 +302,28 @@ export async function runInference(imageSource, modelIds, options = {}) {
   } finally {
     engineState.currentInference = null;
     engineState.abortController = null;
+
+    // CRITICAL: Aggressive memory cleanup on iOS/mobile to prevent crashes
+    // Models are released after inference to free WASM heap and GPU memory
+    if (engineState.memoryConstrained || engineState.isIOS) {
+      console.log('[InferenceEngine] Memory-constrained cleanup: releasing model sessions');
+      try {
+        // Dynamically unload models to free memory
+        for (const modelId of modelIds) {
+          try {
+            const modelModule = await import(`../models/${modelId}.js`);
+            if (modelModule?.unload) {
+              modelModule.unload();
+              console.log(`[InferenceEngine] Unloaded ${modelId} to free memory`);
+            }
+          } catch {
+            // Model module doesn't exist or can't be unloaded
+          }
+        }
+      } catch (cleanupErr) {
+        console.warn('[InferenceEngine] Memory cleanup failed:', cleanupErr);
+      }
+    }
   }
 }
 
@@ -652,9 +695,25 @@ export function aggregateResults(results) {
     throw new Error('No valid results to aggregate');
   }
 
-  // Calculate weighted average (equal weights for now, can add model-specific weights)
-  const totalProb = validResults.reduce((sum, r) => sum + r.aiProbability, 0);
-  const avgProb = totalProb / validResults.length;
+  // Calculate weighted average based on model accuracy and training recency
+  // Weights reflect published accuracy + concept drift considerations
+  const MODEL_WEIGHTS = {
+    'ateeqq': 1.5,          // 99.23% accurate - trained on latest generators (2024)
+    'dima806_ai_real': 0.8  // 98.2% accurate BUT ~2 years old, concept drift warning
+    // Note: prithiv_v2 removed - low confidence
+    // Note: smogy removed - fails on ChatGPT/DALL-E 3
+  };
+
+  let totalWeightedProb = 0;
+  let totalWeight = 0;
+
+  validResults.forEach(r => {
+    const weight = MODEL_WEIGHTS[r.modelId] || 1.0;
+    totalWeightedProb += r.aiProbability * weight;
+    totalWeight += weight;
+  });
+
+  const avgProb = totalWeightedProb / totalWeight;
 
   // Count votes based on thresholds
   const votes = {

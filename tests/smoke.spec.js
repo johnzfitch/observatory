@@ -68,7 +68,7 @@ test.describe('smoke - ONNX Runtime Initialization', () => {
 
     // Check ONNX is available
     const hasOnnx = await page.evaluate(() => {
-      return window.ort !== undefined;
+      return window.ort?.InferenceSession !== undefined;
     });
 
     expect(hasOnnx).toBe(true);
@@ -111,40 +111,45 @@ test.describe('smoke - ONNX Runtime Initialization', () => {
 
 test.describe('smoke - Model Registry', () => {
 
-  test('should load model registry', async ({ page }) => {
+  test('should load model info card', async ({ page }) => {
     await loadApp(page);
 
-    // Wait for models to appear
+    // Wait for model info card to appear
     await waitForModels(page);
 
-    // Check model categories exist
-    const categoryCount = await page.locator('.model-category').count();
-    expect(categoryCount).toBeGreaterThan(0);
+    // Check model info card exists
+    const modelCard = await page.locator('.model-info-card').count();
+    expect(modelCard).toBe(1);
   });
 
-  test('should have expected model categories (1 category)', async ({ page }) => {
+  test('should display model status as ready', async ({ page }) => {
     await loadApp(page);
     await waitForModels(page);
 
-    // Get category count (Full-Image AI Detection only, Face Manipulation disabled)
-    const categoryCount = await page.locator('.model-category').count();
-    expect(categoryCount).toBe(1);
+    // Wait for status to show ready
+    await page.waitForSelector('.model-info-status.ready', { timeout: 10000 });
+    const statusText = await page.textContent('.model-info-status .status-text');
+    expect(statusText).toBe('Ready');
   });
 
-  test('should display model category information', async ({ page }) => {
+  test('should display model information', async ({ page }) => {
     await loadApp(page);
     await waitForModels(page);
 
-    // Check first category has required info
-    const firstCategory = page.locator('.model-category').first();
+    // Check model info card has required info
+    const modelCard = page.locator('.model-info-card');
 
-    // Should have title
-    const hasTitle = await firstCategory.locator('.model-category-title').count();
-    expect(hasTitle).toBeGreaterThan(0);
+    // Should have title (Ateeqq AI vs Human Detector)
+    const title = await modelCard.locator('.model-info-title').textContent();
+    expect(title).toContain('Ateeqq');
 
-    // Should have description
-    const hasDescription = await firstCategory.locator('.model-category-description').count();
-    expect(hasDescription).toBeGreaterThan(0);
+    // Should have subtitle with accuracy
+    const subtitle = await modelCard.locator('.model-info-subtitle').textContent();
+    expect(subtitle).toContain('99.23%');
+
+    // Should have feature items (WebGPU, Privacy, Model Size)
+    const featureCount = await modelCard.locator('.feature-item').count();
+    expect(featureCount).toBe(3);
   });
 
 });

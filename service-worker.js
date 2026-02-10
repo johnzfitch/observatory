@@ -3,7 +3,8 @@
  * Models cached in IndexedDB (onnx-init.js), not here
  */
 
-const CACHE_NAME = 'observatory-v3';
+const CACHE_VERSION = 'v2.5.0'; // January 2026: ONNX Runtime 1.21.0, WebGPU enhancements
+const CACHE_NAME = `observatory-${CACHE_VERSION}`;
 
 const ESSENTIAL_ASSETS = [
   '/',
@@ -42,13 +43,21 @@ self.addEventListener('fetch', (event) => {
   // Skip ONNX models - handled by IndexedDB
   if (url.pathname.endsWith('.onnx') || url.pathname.endsWith('.bin')) return;
 
+  // Skip model JS files - let browser fetch directly
+  if (url.pathname.includes('/models/') && url.pathname.endsWith('.js')) return;
+
   // Skip external CDN requests
   if (url.origin !== location.origin) return;
 
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        if (response.ok && !url.pathname.includes('/models/')) {
+        // Don't cache model JS files - always fetch fresh to get latest fixes
+        const shouldCache = response.ok &&
+                           !url.pathname.includes('/models/') &&
+                           !url.pathname.endsWith('.js');
+
+        if (shouldCache) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
